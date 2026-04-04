@@ -149,9 +149,12 @@ export function CalendarPanel({
             onSelect={(d) => d && onDateChange(d)}
             month={displayMonth}
             onMonthChange={setDisplayMonth}
-            className="mt-2 w-full [&_.rdp-root]:w-full [&_.rdp-month]:w-full [&_.rdp-nav]:hidden [&_.rdp-month_caption]:hidden"
+            className="mt-2 w-full [--cell-size:--spacing(8)]"
             classNames={{
               root: "w-full",
+              nav: "hidden",
+              month_caption: "hidden",
+              day: "aspect-auto p-0 text-center select-none",
             }}
           />
         </div>
