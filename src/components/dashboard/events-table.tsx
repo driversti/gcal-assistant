@@ -222,6 +222,20 @@ export function EventsTable({
     events.length > 0 && events.every((e) => selectedIds.has(eventKey(e)));
   const columns = ALL_COLUMNS.filter((c) => visibleColumns.includes(c.key));
 
+  function columnWidthClass(key: ColumnKey): string {
+    switch (key) {
+      case "calendar":   return "w-[1%] max-w-[140px] whitespace-nowrap";
+      case "summary":    return "";
+      case "time":       return "w-[1%] max-w-[140px] whitespace-nowrap";
+      case "location":   return "";
+      case "status":     return "whitespace-nowrap";
+      case "recurring":  return "whitespace-nowrap";
+      case "created":    return "whitespace-nowrap";
+      case "updated":    return "whitespace-nowrap";
+      default:           return "";
+    }
+  }
+
   function renderCell(event: CalendarEvent, column: ColumnKey) {
     const editable = isEditable(event, calendars);
 
@@ -233,7 +247,7 @@ export function EventsTable({
               className="h-3 w-3 rounded-full shrink-0"
               style={{ backgroundColor: event.calendarColor }}
             />
-            <span className="truncate max-w-[150px]">
+            <span className="truncate">
               {event.calendarName}
             </span>
           </div>
@@ -309,16 +323,18 @@ export function EventsTable({
   return (
     <>
       <div className="rounded-md border">
-        <Table>
-          <TableHeader>
+        <Table className="[&_th]:border-r [&_td]:border-r">
+          <TableHeader className="bg-muted">
             <TableRow>
               <TableHead className="w-[40px]">
                 <Checkbox checked={allSelected} onCheckedChange={onToggleAll} />
               </TableHead>
               {columns.map((col) => (
-                <TableHead key={col.key}>{col.label}</TableHead>
+                <TableHead key={col.key} className={columnWidthClass(col.key)}>
+                  {col.label}
+                </TableHead>
               ))}
-              <TableHead className="w-[60px]" />
+              {duplicateGroups.size > 0 && <TableHead className="w-[60px]" />}
               <TableHead className="w-[40px]" />
             </TableRow>
           </TableHeader>
@@ -340,17 +356,19 @@ export function EventsTable({
                     />
                   </TableCell>
                   {columns.map((col) => (
-                    <TableCell key={col.key}>
+                    <TableCell key={col.key} className="truncate">
                       {renderCell(event, col.key)}
                     </TableCell>
                   ))}
-                  <TableCell>
-                    {dupGroup !== undefined && (
-                      <Badge variant="outline" className="text-xs">
-                        Dup {dupGroup + 1}
-                      </Badge>
-                    )}
-                  </TableCell>
+                  {duplicateGroups.size > 0 && (
+                    <TableCell>
+                      {dupGroup !== undefined && (
+                        <Badge variant="outline" className="text-xs">
+                          Dup {dupGroup + 1}
+                        </Badge>
+                      )}
+                    </TableCell>
+                  )}
                   <TableCell>
                     <DropdownMenu>
                       <DropdownMenuTrigger

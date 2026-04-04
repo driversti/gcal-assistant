@@ -103,7 +103,7 @@ export function InlineTextCell({
   }
 
   if (!editable) {
-    return <span>{value || (field === "location" ? "" : "(No title)")}</span>;
+    return <span className="truncate" title={value}>{value || (field === "location" ? "" : "(No title)")}</span>;
   }
 
   if (editing) {
@@ -127,11 +127,11 @@ export function InlineTextCell({
 
   return (
     <div
-      className="group flex cursor-pointer items-center gap-1"
+      className="group flex cursor-pointer items-center gap-1 truncate"
       onClick={() => setEditing(true)}
-      title={error ?? undefined}
+      title={error ?? value}
     >
-      <span className={error ? "text-destructive" : ""}>
+      <span className={`truncate ${error ? "text-destructive" : ""}`}>
         {value || (field === "location" ? "" : "(No title)")}
       </span>
       <Pencil className="h-3 w-3 opacity-0 group-hover:opacity-50 text-muted-foreground" />

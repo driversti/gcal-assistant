@@ -2,6 +2,16 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Trash2, ArrowRightLeft, GitCompareArrows } from "lucide-react";
 import { MoveDialog } from "./move-dialog";
 import type { CalendarInfo } from "@/lib/types/calendar";
@@ -24,18 +34,18 @@ export function BulkActionsBar({
   isComparing,
 }: BulkActionsBarProps) {
   const [deleting, setDeleting] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [moveDialogOpen, setMoveDialogOpen] = useState(false);
 
   if (selectedCount === 0) return null;
 
   async function handleDelete() {
-    if (!confirm(`Delete ${selectedCount} event(s)? This cannot be undone.`))
-      return;
     setDeleting(true);
     try {
       await onDelete();
     } finally {
       setDeleting(false);
+      setDeleteDialogOpen(false);
     }
   }
 
@@ -49,12 +59,31 @@ export function BulkActionsBar({
         <Button
           variant="destructive"
           size="sm"
-          onClick={handleDelete}
           disabled={deleting}
+          onClick={() => setDeleteDialogOpen(true)}
         >
           <Trash2 className="mr-2 h-4 w-4" />
           {deleting ? "Deleting..." : "Delete"}
         </Button>
+        <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete {selectedCount} event(s)?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleDelete}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
         <Button
           variant="outline"
           size="sm"

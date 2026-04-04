@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
+import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { useCalendars } from "@/hooks/use-calendars";
 import { useEvents } from "@/hooks/use-events";
 import { CalendarFilter } from "@/components/dashboard/calendar-filter";
@@ -77,6 +79,9 @@ export default function DashboardPage() {
 
   // Duplicate detection
   const duplicateGroups = useMemo(() => detectDuplicates(events), [events]);
+
+  // Sidebar
+  const [sidebarOpen, setSidebarOpen] = useState(true);
 
   // AI Create Event dialog
   const [aiCreateOpen, setAiCreateOpen] = useState(false);
@@ -199,13 +204,33 @@ export default function DashboardPage() {
   return (
     <div className="flex h-full">
       {/* Sidebar */}
-      <aside className="w-64 shrink-0 border-r p-4">
-        <CalendarFilter
-          calendars={calendars}
-          selectedIds={calendarIds}
-          onToggle={handleCalendarToggle}
-          loading={calendarsLoading}
-        />
+      <aside
+        className={`shrink-0 border-r transition-all duration-200 ${
+          sidebarOpen ? "w-64 p-4" : "w-10 p-2"
+        }`}
+      >
+        <div className={`flex ${sidebarOpen ? "justify-end" : "justify-center"}`}>
+          <Button
+            variant="ghost"
+            size="icon-xs"
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            title={sidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
+          >
+            {sidebarOpen ? (
+              <PanelLeftClose className="h-4 w-4" />
+            ) : (
+              <PanelLeftOpen className="h-4 w-4" />
+            )}
+          </Button>
+        </div>
+        {sidebarOpen && (
+          <CalendarFilter
+            calendars={calendars}
+            selectedIds={calendarIds}
+            onToggle={handleCalendarToggle}
+            loading={calendarsLoading}
+          />
+        )}
       </aside>
 
       {/* Main content */}
