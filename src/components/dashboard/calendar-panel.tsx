@@ -149,12 +149,15 @@ export function CalendarPanel({
             onSelect={(d) => d && onDateChange(d)}
             month={displayMonth}
             onMonthChange={setDisplayMonth}
-            className="mt-2 w-full [--cell-size:--spacing(8)]"
+            className="mt-2 w-full p-0 [&_table]:w-full"
             classNames={{
               root: "w-full",
               nav: "hidden",
               month_caption: "hidden",
-              day: "aspect-auto p-0 text-center select-none",
+              day: "flex-1 p-0 text-center select-none",
+              week: "mt-1 flex w-full",
+              weekdays: "flex w-full",
+              weekday: "flex-1 text-[0.8rem] font-normal text-muted-foreground select-none",
             }}
           />
         </div>
