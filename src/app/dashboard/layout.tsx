@@ -9,9 +9,5 @@ export default async function DashboardLayout({
   const session = await getSession();
   if (!session) redirect("/");
 
-  return (
-    <div className="flex h-screen flex-col">
-      <main className="flex-1 overflow-hidden">{children}</main>
-    </div>
-  );
+  return <main className="h-screen overflow-hidden">{children}</main>;
 }
