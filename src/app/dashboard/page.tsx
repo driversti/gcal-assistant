@@ -15,6 +15,7 @@ import {
 import { BulkActionsBar } from "@/components/dashboard/bulk-actions-bar";
 import { EventComparison } from "@/components/dashboard/event-comparison";
 import { detectDuplicates } from "@/lib/duplicates";
+import type { EventUpdateFields, RecurrenceMode } from "@/lib/types/event-update";
 
 function toDateString(date: Date): string {
   const year = date.getFullYear();
@@ -141,6 +142,35 @@ export default function DashboardPage() {
     [selectedEvents, refetch]
   );
 
+  const handleUpdateEvent = useCallback(
+    async (
+      eventId: string,
+      calendarId: string,
+      fields: EventUpdateFields,
+      recurrenceMode?: RecurrenceMode,
+      recurringEventId?: string
+    ) => {
+      const res = await fetch(`/api/events/${eventId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          calendarId,
+          fields,
+          recurrenceMode,
+          recurringEventId,
+        }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "Failed to update event");
+      }
+
+      refetch();
+    },
+    [refetch]
+  );
+
   return (
     <div className="flex h-full">
       {/* Sidebar */}
@@ -177,10 +207,12 @@ export default function DashboardPage() {
         {/* Events table */}
         <EventsTable
           events={events}
+          calendars={calendars}
           visibleColumns={visibleColumns}
           selectedIds={selectedIds}
           onToggleSelect={handleToggleSelect}
           onToggleAll={handleToggleAll}
+          onUpdateEvent={handleUpdateEvent}
           duplicateGroups={duplicateGroups}
           loading={eventsLoading}
         />
