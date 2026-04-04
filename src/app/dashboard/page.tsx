@@ -234,6 +234,7 @@ export default function DashboardPage() {
           onUpdateEvent={handleUpdateEvent}
           duplicateGroups={duplicateGroups}
           loading={eventsLoading}
+          onRefetch={refetch}
         />
 
         {/* Comparison view */}

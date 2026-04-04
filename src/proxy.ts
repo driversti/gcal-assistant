@@ -8,6 +8,7 @@ export function proxy(request: NextRequest) {
   // Allow auth routes and static assets
   if (
     pathname.startsWith("/api/auth") ||
+    pathname.startsWith("/api/ai/models") ||
     pathname.startsWith("/_next") ||
     pathname === "/"
   ) {

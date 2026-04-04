@@ -15,12 +15,21 @@ import type { CalendarEvent } from "@/lib/types/event";
 import type { CalendarInfo } from "@/lib/types/calendar";
 import type { EventUpdateFields, RecurrenceMode } from "@/lib/types/event-update";
 import type { ColumnKey } from "./column-toggle";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { MoreVertical, Sparkles } from "lucide-react";
 import { ALL_COLUMNS } from "./column-toggle";
 import { InlineTextCell } from "./cells/inline-text-cell";
 import { DescriptionPopoverCell } from "./cells/description-popover-cell";
 import { DateTimePopoverCell } from "./cells/date-time-popover-cell";
 import { StatusDropdownCell } from "./cells/status-dropdown-cell";
 import { RecurrenceDialog } from "./cells/recurrence-dialog";
+import { AskAiDialog } from "./ask-ai-dialog";
+import { Button } from "@/components/ui/button";
 
 interface EventsTableProps {
   events: CalendarEvent[];
@@ -38,6 +47,7 @@ interface EventsTableProps {
   ) => Promise<void>;
   duplicateGroups: Map<string, number>;
   loading: boolean;
+  onRefetch?: () => void;
 }
 
 function formatDateTime(dateStr: string): string {
@@ -169,11 +179,15 @@ export function EventsTable({
   onUpdateEvent,
   duplicateGroups,
   loading,
+  onRefetch,
 }: EventsTableProps) {
   const [recurrenceDialogOpen, setRecurrenceDialogOpen] = useState(false);
   const [recurrenceCallback, setRecurrenceCallback] = useState<
     ((mode: RecurrenceMode) => void) | null
   >(null);
+
+  const [askAiDialogOpen, setAskAiDialogOpen] = useState(false);
+  const [selectedAiEvent, setSelectedAiEvent] = useState<CalendarEvent | null>(null);
 
   const handleRecurrencePrompt = useCallback(
     (callback: (mode: RecurrenceMode) => void) => {
@@ -305,6 +319,7 @@ export function EventsTable({
                 <TableHead key={col.key}>{col.label}</TableHead>
               ))}
               <TableHead className="w-[60px]" />
+              <TableHead className="w-[40px]" />
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -336,6 +351,28 @@ export function EventsTable({
                       </Badge>
                     )}
                   </TableCell>
+                  <TableCell>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger
+                        className="inline-flex h-8 w-8 items-center justify-center rounded-md hover:bg-accent hover:text-accent-foreground outline-none"
+                        title="Actions"
+                      >
+                        <span className="sr-only">Open menu</span>
+                        <MoreVertical className="h-4 w-4" />
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem
+                          onClick={() => {
+                            setSelectedAiEvent(event);
+                            setAskAiDialogOpen(true);
+                          }}
+                        >
+                          <Sparkles className="mr-2 h-4 w-4 text-blue-500" />
+                          Ask AI
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
                 </TableRow>
               );
             })}
@@ -346,6 +383,12 @@ export function EventsTable({
         open={recurrenceDialogOpen}
         onOpenChange={setRecurrenceDialogOpen}
         onConfirm={handleRecurrenceConfirm}
+      />
+      <AskAiDialog
+        event={selectedAiEvent}
+        open={askAiDialogOpen}
+        onOpenChange={setAskAiDialogOpen}
+        onSuccess={() => onRefetch?.()}
       />
     </>
   );
