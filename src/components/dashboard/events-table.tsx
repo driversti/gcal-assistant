@@ -40,16 +40,6 @@ interface EventsTableProps {
   loading: boolean;
 }
 
-function formatTime(dateStr: string, isAllDay: boolean): string {
-  if (isAllDay) return "All day";
-  const date = new Date(dateStr);
-  return date.toLocaleTimeString("en-US", {
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  });
-}
-
 function formatDateTime(dateStr: string): string {
   if (!dateStr) return "";
   const date = new Date(dateStr);

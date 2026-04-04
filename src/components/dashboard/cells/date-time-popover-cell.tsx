@@ -98,10 +98,23 @@ export function DateTimePopoverCell({
     }
   }, [open, dateStr, event.isAllDay]);
 
+  const allDayChanged = isAllDay !== event.isAllDay;
+
   const updatedFields = useMemo((): EventUpdateFields => {
     const dateOnly = toDateString(selectedDate);
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
     if (isAllDay) {
+      // When toggling to all-day, send both start and end as date-only
+      // so Google Calendar doesn't reject mismatched formats
+      if (allDayChanged) {
+        const startDate = field === "start" ? dateOnly : toDateString(getDateFromString(event.start));
+        const endDate = field === "end" ? dateOnly : toDateString(getDateFromString(event.end));
+        return {
+          start: { date: startDate },
+          end: { date: endDate },
+        };
+      }
       return {
         [field]: { date: dateOnly },
       };
@@ -115,13 +128,25 @@ export function DateTimePopoverCell({
       parseInt(minute, 10)
     ).toISOString();
 
+    // When toggling from all-day to timed, send both fields
+    if (allDayChanged) {
+      const otherField = field === "start" ? "end" : "start";
+      const otherDateStr = field === "start" ? event.end : event.start;
+      const otherDate = getDateFromString(otherDateStr);
+      const otherDateTime = new Date(
+        otherDate.getFullYear(), otherDate.getMonth(), otherDate.getDate(),
+        field === "start" ? 1 : 0, 0
+      ).toISOString();
+      return {
+        [field]: { dateTime, timeZone: tz },
+        [otherField]: { dateTime: otherDateTime, timeZone: tz },
+      };
+    }
+
     return {
-      [field]: {
-        dateTime,
-        timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-      },
+      [field]: { dateTime, timeZone: tz },
     };
-  }, [selectedDate, hour, minute, isAllDay, field]);
+  }, [selectedDate, hour, minute, isAllDay, field, allDayChanged, event.start, event.end]);
 
   const hasChanges = useMemo(() => {
     const origDate = getDateFromString(dateStr);

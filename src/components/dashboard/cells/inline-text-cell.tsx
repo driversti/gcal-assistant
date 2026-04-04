@@ -48,6 +48,14 @@ export function InlineTextCell({
     }
   }, [value, editing]);
 
+  // Auto-clear errors after 5 seconds
+  useEffect(() => {
+    if (error) {
+      const timer = setTimeout(() => setError(null), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [error]);
+
   async function doSave(recurrenceMode?: RecurrenceMode) {
     if (draft === value) {
       setEditing(false);

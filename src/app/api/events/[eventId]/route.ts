@@ -47,12 +47,30 @@ export async function PATCH(
       );
     }
 
+    // Validate recurrenceMode if provided
+    const validModes = ["single", "thisAndFollowing", "all"];
+    if (body.recurrenceMode && !validModes.includes(body.recurrenceMode)) {
+      return NextResponse.json(
+        { error: "Invalid recurrenceMode" },
+        { status: 400 }
+      );
+    }
+
+    // Only allow known fields through
+    const allowedKeys = ["summary", "description", "location", "start", "end", "status"];
+    const sanitizedFields: Record<string, unknown> = {};
+    for (const key of allowedKeys) {
+      if (key in body.fields) {
+        sanitizedFields[key] = body.fields[key];
+      }
+    }
+
     try {
       await updateEvent(
         client,
         body.calendarId,
         eventId,
-        body.fields,
+        sanitizedFields,
         body.recurrenceMode,
         body.recurringEventId
       );

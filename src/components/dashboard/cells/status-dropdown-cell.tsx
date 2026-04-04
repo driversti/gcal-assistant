@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Loader2 } from "lucide-react";
 import {
   DropdownMenu,
@@ -41,6 +41,14 @@ export function StatusDropdownCell({
 }: StatusDropdownCellProps) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Auto-clear errors after 5 seconds
+  useEffect(() => {
+    if (error) {
+      const timer = setTimeout(() => setError(null), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [error]);
 
   async function doSave(newStatus: string, recurrenceMode?: RecurrenceMode) {
     if (newStatus === event.status) return;

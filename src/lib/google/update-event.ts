@@ -65,12 +65,14 @@ export async function updateEvent(
     return;
   }
 
-  // "thisAndFollowing": get all instances, find this one's index,
+  // "thisAndFollowing": get instances from now onwards, find this one,
   // then patch this and all later instances individually.
+  // Use timeMin to avoid fetching thousands of past instances.
   const { data } = await calendarApi.events.instances({
     calendarId,
     eventId: recurringEventId,
-    maxResults: 2500,
+    timeMin: new Date().toISOString(),
+    maxResults: 250,
   });
 
   const instances = data.items ?? [];
