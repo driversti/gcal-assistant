@@ -14,6 +14,8 @@ import {
 } from "@/components/dashboard/column-toggle";
 import { BulkActionsBar } from "@/components/dashboard/bulk-actions-bar";
 import { EventComparison } from "@/components/dashboard/event-comparison";
+import { AiCreateFab } from "@/components/dashboard/ai-create-fab";
+import { AiCreateEventDialog } from "@/components/dashboard/ai-create-event-dialog";
 import { detectDuplicates } from "@/lib/duplicates";
 import type { EventUpdateFields, RecurrenceMode } from "@/lib/types/event-update";
 
@@ -75,6 +77,9 @@ export default function DashboardPage() {
 
   // Duplicate detection
   const duplicateGroups = useMemo(() => detectDuplicates(events), [events]);
+
+  // AI Create Event dialog
+  const [aiCreateOpen, setAiCreateOpen] = useState(false);
 
   function handleDateChange(newDate: Date) {
     const params = new URLSearchParams(searchParams.toString());
@@ -243,6 +248,15 @@ export default function DashboardPage() {
           <EventComparison events={selectedEvents} />
         )}
       </div>
+
+      {/* AI Create Event */}
+      <AiCreateFab onClick={() => setAiCreateOpen(true)} />
+      <AiCreateEventDialog
+        open={aiCreateOpen}
+        onOpenChange={setAiCreateOpen}
+        calendars={calendars}
+        onSuccess={refetch}
+      />
     </div>
   );
 }
