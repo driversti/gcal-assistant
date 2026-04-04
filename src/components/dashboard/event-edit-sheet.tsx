@@ -68,6 +68,14 @@ export function EventEditSheet({
     }
   }, [event, open]);
 
+  // Prevent body scroll when sheet is open
+  useEffect(() => {
+    if (open) {
+      document.body.style.overflow = "hidden";
+      return () => { document.body.style.overflow = ""; };
+    }
+  }, [open]);
+
   if (!event || !open) return null;
 
   const calendarInfo = calendars.find((c) => c.id === event.calendarId);

@@ -331,10 +331,8 @@ export default function DashboardPage() {
           events={filteredEvents}
           calendars={calendars}
           duplicateGroups={duplicateGroups}
-          onUpdateEvent={handleUpdateEvent}
           onDeleteSingle={handleDeleteSingle}
           onMoveSingle={handleMoveSingle}
-          onRefetch={refetch}
           onSelectEvent={(event) => setEditingEvent(event)}
         />
       </div>

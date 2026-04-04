@@ -6,23 +6,14 @@ import { Trash2, ArrowRightLeft } from "lucide-react";
 import { MoveDialog } from "./move-dialog";
 import type { CalendarEvent } from "@/lib/types/event";
 import type { CalendarInfo } from "@/lib/types/calendar";
-import type { EventUpdateFields, RecurrenceMode } from "@/lib/types/event-update";
 import { format, parseISO } from "date-fns";
 
 interface EventCardListProps {
   events: CalendarEvent[];
   calendars: CalendarInfo[];
   duplicateGroups: Map<string, number>;
-  onUpdateEvent: (
-    eventId: string,
-    calendarId: string,
-    fields: EventUpdateFields,
-    recurrenceMode?: RecurrenceMode,
-    recurringEventId?: string
-  ) => Promise<void>;
   onDeleteSingle: (event: CalendarEvent) => Promise<void>;
   onMoveSingle: (event: CalendarEvent, targetCalendarId: string) => Promise<void>;
-  onRefetch?: () => void;
   onSelectEvent: (event: CalendarEvent) => void;
 }
 
@@ -67,15 +58,17 @@ function SwipeableCard({
 }) {
   const [swiped, setSwiped] = useState(false);
   const touchStartX = useRef(0);
+  const didSwipe = useRef(false);
 
   function handleTouchStart(e: React.TouchEvent) {
     touchStartX.current = e.touches[0].clientX;
+    didSwipe.current = false;
   }
 
   function handleTouchEnd(e: React.TouchEvent) {
     const diff = touchStartX.current - e.changedTouches[0].clientX;
-    if (diff > 60) setSwiped(true);
-    else if (diff < -60) setSwiped(false);
+    if (diff > 60) { setSwiped(true); didSwipe.current = true; }
+    else if (diff < -60) { setSwiped(false); didSwipe.current = true; }
   }
 
   const isDuplicate = duplicateGroup !== undefined;
@@ -102,7 +95,7 @@ function SwipeableCard({
       <div
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
-        onClick={() => !swiped && onTap()}
+        onClick={() => { if (!swiped && !didSwipe.current) onTap(); }}
         className={`relative flex gap-3 rounded-2xl border bg-card p-3.5 transition-transform duration-200 ${
           swiped ? "-translate-x-32" : "translate-x-0"
         } ${isDuplicate ? "border-amber-400/30 dark:border-amber-500/20" : "border-border"}`}

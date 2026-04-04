@@ -42,7 +42,7 @@ export function CalendarPanel({
   const [filtersExpanded, setFiltersExpanded] = useState(true);
 
   async function handleLogout() {
-    await fetch("/api/auth/logout");
+    await fetch("/api/auth/logout", { method: "POST" });
     router.push("/");
   }
 
