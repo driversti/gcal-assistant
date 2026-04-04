@@ -14,7 +14,7 @@ export function AiCreateFab({ onClick, disabled }: AiCreateFabProps) {
       onClick={onClick}
       disabled={disabled}
       size="icon"
-      className="fixed bottom-6 right-6 z-50 h-14 w-14 rounded-full shadow-lg transition-transform hover:scale-105"
+      className="fixed bottom-6 right-4 z-50 h-12 w-12 rounded-full bg-primary text-primary-foreground shadow-lg transition-transform hover:scale-105 lg:bottom-6 lg:right-6 lg:h-14 lg:w-14"
       title="Create event with AI"
     >
       <Sparkles className="h-6 w-6" />

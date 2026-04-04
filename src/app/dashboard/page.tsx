@@ -2,23 +2,20 @@
 
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { useCalendars } from "@/hooks/use-calendars";
 import { useEvents } from "@/hooks/use-events";
-import { CalendarFilter } from "@/components/dashboard/calendar-filter";
+import { CalendarPanel } from "@/components/dashboard/calendar-panel";
 import { DatePicker } from "@/components/dashboard/date-picker";
 import { EventsTable, eventKey } from "@/components/dashboard/events-table";
-import {
-  ColumnToggle,
-  DEFAULT_COLUMNS,
-  type ColumnKey,
-} from "@/components/dashboard/column-toggle";
+import { ColumnToggle, DEFAULT_COLUMNS, type ColumnKey } from "@/components/dashboard/column-toggle";
 import { BulkActionsBar } from "@/components/dashboard/bulk-actions-bar";
-import { EventComparison } from "@/components/dashboard/event-comparison";
 import { AiCreateFab } from "@/components/dashboard/ai-create-fab";
 import { AiCreateEventDialog } from "@/components/dashboard/ai-create-event-dialog";
+import { SegmentedControl, type Segment } from "@/components/dashboard/segmented-control";
+import { EventCardList } from "@/components/dashboard/event-card-list";
+import { EventEditSheet } from "@/components/dashboard/event-edit-sheet";
 import { detectDuplicates } from "@/lib/duplicates";
+import type { CalendarEvent } from "@/lib/types/event";
 import type { EventUpdateFields, RecurrenceMode } from "@/lib/types/event-update";
 
 function toDateString(date: Date): string {
@@ -75,23 +72,53 @@ export default function DashboardPage() {
 
   // Selection
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [isComparing, setIsComparing] = useState(false);
 
   // Duplicate detection
   const duplicateGroups = useMemo(() => detectDuplicates(events), [events]);
 
-  // Sidebar
-  const [sidebarOpen, setSidebarOpen] = useState(true);
-
   // AI Create Event dialog
   const [aiCreateOpen, setAiCreateOpen] = useState(false);
+
+  // Segment control
+  const [activeSegment, setActiveSegment] = useState<Segment>("all");
+
+  // Mobile event editing
+  const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null);
+
+  // User email (for CalendarPanel avatar)
+  const [email, setEmail] = useState("");
+
+  useEffect(() => {
+    fetch("/api/auth/session")
+      .then((r) => r.json())
+      .then((data) => setEmail(data.email ?? ""))
+      .catch(() => {});
+  }, []);
+
+  // Duplicate event keys set for fast lookup
+  const duplicateEventKeys = useMemo(() => {
+    const keys = new Set<string>();
+    for (const key of duplicateGroups.keys()) keys.add(key);
+    return keys;
+  }, [duplicateGroups]);
+
+  // Filtered events based on active segment
+  const filteredEvents = useMemo(() => {
+    switch (activeSegment) {
+      case "duplicates":
+        return events.filter((e) => duplicateEventKeys.has(eventKey(e)));
+      case "allday":
+        return events.filter((e) => e.isAllDay);
+      default:
+        return events;
+    }
+  }, [events, activeSegment, duplicateEventKeys]);
 
   function handleDateChange(newDate: Date) {
     const params = new URLSearchParams(searchParams.toString());
     params.set("date", toDateString(newDate));
     router.push(`/dashboard?${params.toString()}`);
     setSelectedIds(new Set());
-    setIsComparing(false);
   }
 
   function handleCalendarToggle(id: string) {
@@ -144,7 +171,6 @@ export default function DashboardPage() {
     });
 
     setSelectedIds(new Set());
-    setIsComparing(false);
     refetch();
   }, [selectedEvents, refetch]);
 
@@ -166,7 +192,6 @@ export default function DashboardPage() {
       });
 
       setSelectedIds(new Set());
-      setIsComparing(false);
       refetch();
     },
     [selectedEvents, refetch]
@@ -201,42 +226,56 @@ export default function DashboardPage() {
     [refetch]
   );
 
+  const handleDeleteSingle = useCallback(
+    async (event: CalendarEvent) => {
+      await fetch("/api/events/bulk", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "delete",
+          events: [{ id: event.id, calendarId: event.calendarId, recurringEventId: event.recurringEventId }],
+        }),
+      });
+      refetch();
+    },
+    [refetch]
+  );
+
+  const handleMoveSingle = useCallback(
+    async (event: CalendarEvent, targetCalendarId: string) => {
+      await fetch("/api/events/bulk", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "move",
+          events: [{ id: event.id, calendarId: event.calendarId }],
+          targetCalendarId,
+        }),
+      });
+      refetch();
+    },
+    [refetch]
+  );
+
   return (
-    <div className="flex h-full">
-      {/* Sidebar */}
-      <aside
-        className={`shrink-0 border-r transition-all duration-200 ${
-          sidebarOpen ? "w-64 p-4" : "w-10 p-2"
-        }`}
-      >
-        <div className={`flex ${sidebarOpen ? "justify-end" : "justify-center"}`}>
-          <Button
-            variant="ghost"
-            size="icon-xs"
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-            title={sidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
-          >
-            {sidebarOpen ? (
-              <PanelLeftClose className="h-4 w-4" />
-            ) : (
-              <PanelLeftOpen className="h-4 w-4" />
-            )}
-          </Button>
-        </div>
-        {sidebarOpen && (
-          <CalendarFilter
-            calendars={calendars}
-            selectedIds={calendarIds}
-            onToggle={handleCalendarToggle}
-            loading={calendarsLoading}
-          />
-        )}
-      </aside>
+    <div className="flex h-full flex-col lg:flex-row">
+      {/* Calendar Panel — top on mobile, left sidebar on desktop */}
+      <div className="shrink-0 border-b p-4 lg:w-72 lg:border-b-0 lg:border-r lg:overflow-auto">
+        <CalendarPanel
+          date={date}
+          onDateChange={handleDateChange}
+          calendars={calendars}
+          selectedCalendarIds={calendarIds}
+          onCalendarToggle={handleCalendarToggle}
+          email={email}
+          calendarsLoading={calendarsLoading}
+        />
+      </div>
 
       {/* Main content */}
-      <div className="flex flex-1 flex-col gap-4 overflow-auto p-6">
-        {/* Top bar: date picker + column toggle */}
-        <div className="flex items-center justify-between">
+      <div className="flex flex-1 flex-col gap-3 overflow-auto p-4 lg:p-6">
+        {/* Desktop top bar: date picker + column toggle */}
+        <div className="hidden items-center justify-between lg:flex">
           <DatePicker date={date} onDateChange={handleDateChange} />
           <ColumnToggle
             visibleColumns={visibleColumns}
@@ -244,35 +283,71 @@ export default function DashboardPage() {
           />
         </div>
 
-        {/* Bulk actions */}
+        {/* Mobile date title */}
+        <div className="lg:hidden">
+          <h2 className="text-lg font-bold">
+            {date.toLocaleDateString("en-US", {
+              weekday: "long",
+              month: "long",
+              day: "numeric",
+            })}
+          </h2>
+        </div>
+
+        {/* Segmented control (both mobile and desktop) */}
+        <SegmentedControl
+          events={events}
+          duplicateGroupCount={duplicateGroups.size}
+          activeSegment={activeSegment}
+          onSegmentChange={setActiveSegment}
+        />
+
+        {/* Desktop: bulk actions */}
         <BulkActionsBar
           selectedCount={selectedIds.size}
           calendars={calendars}
           onDelete={handleDelete}
           onMove={handleMove}
-          onCompare={() => setIsComparing(!isComparing)}
-          isComparing={isComparing}
         />
 
-        {/* Events table */}
-        <EventsTable
-          events={events}
+        {/* Desktop: events table */}
+        <div className="hidden lg:block">
+          <EventsTable
+            events={filteredEvents}
+            calendars={calendars}
+            visibleColumns={visibleColumns}
+            selectedIds={selectedIds}
+            onToggleSelect={handleToggleSelect}
+            onToggleAll={handleToggleAll}
+            onUpdateEvent={handleUpdateEvent}
+            duplicateGroups={duplicateGroups}
+            loading={eventsLoading}
+            onRefetch={refetch}
+          />
+        </div>
+
+        {/* Mobile: event card list */}
+        <EventCardList
+          events={filteredEvents}
           calendars={calendars}
-          visibleColumns={visibleColumns}
-          selectedIds={selectedIds}
-          onToggleSelect={handleToggleSelect}
-          onToggleAll={handleToggleAll}
-          onUpdateEvent={handleUpdateEvent}
           duplicateGroups={duplicateGroups}
-          loading={eventsLoading}
+          onUpdateEvent={handleUpdateEvent}
+          onDeleteSingle={handleDeleteSingle}
+          onMoveSingle={handleMoveSingle}
           onRefetch={refetch}
+          onSelectEvent={(event) => setEditingEvent(event)}
         />
-
-        {/* Comparison view */}
-        {isComparing && selectedEvents.length >= 2 && (
-          <EventComparison events={selectedEvents} />
-        )}
       </div>
+
+      {/* Mobile edit sheet */}
+      <EventEditSheet
+        event={editingEvent}
+        calendars={calendars}
+        open={!!editingEvent}
+        onOpenChange={(open) => !open && setEditingEvent(null)}
+        onUpdateEvent={handleUpdateEvent}
+        onDelete={handleDeleteSingle}
+      />
 
       {/* AI Create Event */}
       <AiCreateFab onClick={() => setAiCreateOpen(true)} />

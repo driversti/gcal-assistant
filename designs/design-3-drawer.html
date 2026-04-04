@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GCA Design 3 — Bottom Drawer</title>
+<style>
+  :root {
+    --bg: #000000;
+    --surface: #111113;
+    --surface-2: #1c1c1f;
+    --surface-3: #252529;
+    --text: #ffffff;
+    --text-2: #a1a1aa;
+    --text-3: #52525b;
+    --teal: #2dd4bf;
+    --teal-soft: rgba(45,212,191,0.1);
+    --rose: #fb7185;
+    --rose-soft: rgba(251,113,133,0.1);
+    --amber: #fbbf24;
+    --amber-soft: rgba(251,191,36,0.08);
+    --sky: #38bdf8;
+    --sky-soft: rgba(56,189,248,0.1);
+    --violet: #a78bfa;
+    --violet-soft: rgba(167,139,250,0.1);
+    --border: rgba(255,255,255,0.06);
+    --radius: 24px;
+    --radius-md: 16px;
+    --radius-sm: 12px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Inter', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    max-width: 430px;
+    margin: 0 auto;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ─── Calendar View (top half) ─── */
+  .calendar-view {
+    padding: 44px 16px 20px;
+    position: relative;
+  }
+
+  .cal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+  }
+  .cal-month {
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .cal-month .arrow {
+    font-size: 14px;
+    color: var(--text-3);
+    cursor: pointer;
+    padding: 4px;
+  }
+  .cal-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+  .cal-btn {
+    padding: 6px 14px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text-2);
+    font-size: 13px;
+    cursor: pointer;
+    font-weight: 500;
+  }
+  .cal-btn.today { background: var(--teal-soft); color: var(--teal); border-color: transparent; }
+
+  .mini-cal {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 2px;
+    margin-bottom: 8px;
+  }
+  .mini-cal .day-header {
+    text-align: center;
+    font-size: 11px;
+    color: var(--text-3);
+    font-weight: 600;
+    padding: 8px 0;
+    text-transform: uppercase;
+  }
+  .mini-cal .day {
+    text-align: center;
+    padding: 10px 0;
+    font-size: 14px;
+    border-radius: 12px;
+    cursor: pointer;
+    color: var(--text-2);
+    position: relative;
+    transition: all 0.15s;
+  }
+  .mini-cal .day:active { transform: scale(0.9); }
+  .mini-cal .day.other { color: var(--text-3); opacity: 0.4; }
+  .mini-cal .day.today {
+    color: var(--teal);
+    font-weight: 700;
+  }
+  .mini-cal .day.selected {
+    background: var(--teal);
+    color: var(--bg);
+    font-weight: 700;
+  }
+  .mini-cal .day .event-dots {
+    display: flex;
+    justify-content: center;
+    gap: 2px;
+    position: absolute;
+    bottom: 3px;
+    left: 0;
+    right: 0;
+  }
+  .mini-cal .day .ev-dot {
+    width: 3px;
+    height: 3px;
+    border-radius: 50%;
+  }
+
+  /* ─── Bottom Drawer ─── */
+  .drawer {
+    background: var(--surface);
+    border-radius: var(--radius) var(--radius) 0 0;
+    min-height: 55vh;
+    padding-bottom: 100px;
+    border-top: 1px solid var(--border);
+  }
+  .drawer-handle {
+    display: flex;
+    justify-content: center;
+    padding: 12px;
+  }
+  .drawer-handle div {
+    width: 36px;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--text-3);
+  }
+  .drawer-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 4px 20px 16px;
+  }
+  .drawer-title {
+    font-size: 18px;
+    font-weight: 700;
+  }
+  .drawer-subtitle {
+    font-size: 13px;
+    color: var(--text-3);
+    margin-top: 2px;
+  }
+  .drawer-actions {
+    display: flex;
+    gap: 6px;
+  }
+  .drawer-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: 1px solid var(--border);
+    background: var(--surface-2);
+    color: var(--text-2);
+    font-size: 16px;
+    display: grid;
+    place-items: center;
+    cursor: pointer;
+  }
+
+  /* ─── Segmented Control ─── */
+  .segment-control {
+    display: flex;
+    margin: 0 20px 16px;
+    background: var(--surface-2);
+    border-radius: var(--radius-sm);
+    padding: 3px;
+    gap: 3px;
+  }
+  .segment {
+    flex: 1;
+    padding: 8px;
+    border-radius: 10px;
+    border: none;
+    background: transparent;
+    color: var(--text-3);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    text-align: center;
+    transition: all 0.2s;
+  }
+  .segment.active {
+    background: var(--surface-3);
+    color: var(--text);
+    box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+  }
+
+  /* ─── Event List ─── */
+  .event-list {
+    padding: 0 16px;
+  }
+  .event-group-label {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-3);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    padding: 4px 6px 8px;
+  }
+
+  .event-row {
+    display: flex;
+    gap: 12px;
+    padding: 14px;
+    margin-bottom: 6px;
+    border-radius: var(--radius-md);
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    align-items: flex-start;
+    transition: transform 0.15s;
+    position: relative;
+    overflow: hidden;
+  }
+  .event-row:active { transform: scale(0.98); }
+  .event-row.duplicate {
+    border-color: rgba(251,191,36,0.2);
+  }
+
+  .event-time-col {
+    min-width: 52px;
+    text-align: center;
+    flex-shrink: 0;
+  }
+  .event-time-start {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text);
+  }
+  .event-time-end {
+    font-size: 11px;
+    color: var(--text-3);
+    margin-top: 2px;
+  }
+  .event-time-allday {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--teal);
+    padding: 4px 0;
+  }
+
+  .event-color-bar {
+    width: 3px;
+    align-self: stretch;
+    border-radius: 2px;
+    flex-shrink: 0;
+  }
+
+  .event-info {
+    flex: 1;
+    min-width: 0;
+  }
+  .event-name {
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 1.3;
+    margin-bottom: 4px;
+  }
+  .event-loc {
+    font-size: 12px;
+    color: var(--text-2);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .event-badges {
+    display: flex;
+    gap: 4px;
+    margin-top: 6px;
+    flex-wrap: wrap;
+  }
+  .badge {
+    font-size: 10px;
+    padding: 3px 8px;
+    border-radius: 6px;
+    font-weight: 600;
+  }
+
+  .event-more {
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    border: none;
+    background: transparent;
+    color: var(--text-3);
+    font-size: 18px;
+    cursor: pointer;
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+  }
+
+  /* ─── Quick Actions ─── */
+  .quick-actions {
+    position: fixed;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    max-width: 430px;
+    width: 100%;
+    padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+    background: rgba(17,17,19,0.92);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-top: 1px solid var(--border);
+    display: flex;
+    gap: 10px;
+    z-index: 100;
+  }
+  .qa-btn {
+    flex: 1;
+    padding: 14px;
+    border-radius: var(--radius-sm);
+    border: none;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    transition: transform 0.15s;
+  }
+  .qa-btn:active { transform: scale(0.96); }
+  .qa-btn.primary {
+    background: linear-gradient(135deg, var(--teal), #06b6d4);
+    color: var(--bg);
+    box-shadow: 0 4px 20px rgba(45,212,191,0.3);
+  }
+  .qa-btn.secondary {
+    background: var(--surface-2);
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+
+  /* ─── Design Label ─── */
+  .design-label {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    background: var(--teal);
+    color: var(--bg);
+    text-align: center;
+    padding: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    z-index: 1000;
+    max-width: 430px;
+    margin: 0 auto;
+  }
+
+  /* ─── Light Theme ─── */
+  body.light {
+    --bg: #ffffff;
+    --surface: #f7f7f9;
+    --surface-2: #eeeef2;
+    --surface-3: #e2e2e8;
+    --text: #111118;
+    --text-2: #5c5c70;
+    --text-3: #9898a8;
+    --teal: #0d9488;
+    --teal-soft: rgba(13,148,136,0.08);
+    --rose: #e11d48;
+    --rose-soft: rgba(225,29,72,0.06);
+    --amber: #b45309;
+    --amber-soft: rgba(180,83,9,0.06);
+    --sky: #0284c7;
+    --sky-soft: rgba(2,132,199,0.08);
+    --violet: #7c3aed;
+    --violet-soft: rgba(124,58,237,0.08);
+    --border: rgba(0,0,0,0.06);
+  }
+  body.light .drawer {
+    background: #ffffff;
+    box-shadow: 0 -4px 20px rgba(0,0,0,0.06);
+  }
+  body.light .mini-cal .day.selected { color: white; }
+  body.light .event-row { box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
+  body.light .event-row.duplicate { border-color: rgba(180,83,9,0.2); }
+  body.light .quick-actions {
+    background: rgba(255,255,255,0.92);
+  }
+  body.light .qa-btn.primary { color: white; box-shadow: 0 4px 20px rgba(13,148,136,0.2); }
+  body.light .segment.active { box-shadow: 0 1px 4px rgba(0,0,0,0.08); background: #fff; }
+
+  /* ─── Theme Toggle ─── */
+  .theme-toggle {
+    padding: 6px 14px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text-2);
+    font-size: 13px;
+    cursor: pointer;
+    font-weight: 500;
+  }
+</style>
+</head>
+<body>
+
+<div class="design-label">Design 3 — Calendar + Bottom Drawer</div>
+
+<!-- Calendar View -->
+<section class="calendar-view">
+  <div class="cal-header">
+    <div class="cal-month">
+      <span class="arrow">‹</span>
+      April 2026
+      <span class="arrow">›</span>
+    </div>
+    <div class="cal-actions">
+      <button class="cal-btn today">Today</button>
+      <button class="theme-toggle" onclick="document.body.classList.toggle('light');this.textContent=document.body.classList.contains('light')?'🌙 Dark':'☀️ Light'">☀️ Light</button>
+    </div>
+  </div>
+
+  <div class="mini-cal">
+    <div class="day-header">Mon</div>
+    <div class="day-header">Tue</div>
+    <div class="day-header">Wed</div>
+    <div class="day-header">Thu</div>
+    <div class="day-header">Fri</div>
+    <div class="day-header">Sat</div>
+    <div class="day-header">Sun</div>
+
+    <div class="day other">30</div>
+    <div class="day other">31</div>
+    <div class="day">1<div class="event-dots"><span class="ev-dot" style="background:var(--sky)"></span></div></div>
+    <div class="day">2</div>
+    <div class="day">3<div class="event-dots"><span class="ev-dot" style="background:var(--sky)"></span><span class="ev-dot" style="background:var(--rose)"></span></div></div>
+    <div class="day selected today">4<div class="event-dots"><span class="ev-dot" style="background:#fff"></span><span class="ev-dot" style="background:#fff"></span></div></div>
+    <div class="day">5</div>
+    <div class="day">6</div>
+    <div class="day">7<div class="event-dots"><span class="ev-dot" style="background:var(--violet)"></span></div></div>
+    <div class="day">8</div>
+    <div class="day">9</div>
+    <div class="day">10</div>
+    <div class="day">11</div>
+    <div class="day">12<div class="event-dots"><span class="ev-dot" style="background:var(--sky)"></span></div></div>
+    <div class="day">13</div>
+    <div class="day">14</div>
+    <div class="day">15</div>
+    <div class="day">16</div>
+    <div class="day">17</div>
+    <div class="day">18<div class="event-dots"><span class="ev-dot" style="background:var(--rose)"></span></div></div>
+    <div class="day">19</div>
+    <div class="day">20</div>
+    <div class="day">21</div>
+    <div class="day">22</div>
+    <div class="day">23</div>
+    <div class="day">24</div>
+    <div class="day">25</div>
+    <div class="day">26</div>
+    <div class="day">27</div>
+    <div class="day">28</div>
+    <div class="day">29</div>
+    <div class="day">30</div>
+  </div>
+</section>
+
+<!-- Bottom Drawer -->
+<section class="drawer">
+  <div class="drawer-handle"><div></div></div>
+
+  <div class="drawer-header">
+    <div>
+      <div class="drawer-title">Friday, April 4</div>
+      <div class="drawer-subtitle">5 events · 2 possible duplicates</div>
+    </div>
+    <div class="drawer-actions">
+      <button class="drawer-btn">📅</button>
+      <button class="drawer-btn">⚙️</button>
+    </div>
+  </div>
+
+  <!-- Segments -->
+  <div class="segment-control">
+    <button class="segment active">All (5)</button>
+    <button class="segment">Duplicates (2)</button>
+    <button class="segment">All Day (1)</button>
+  </div>
+
+  <!-- Event List -->
+  <div class="event-list">
+
+    <div class="event-group-label">All Day</div>
+
+    <div class="event-row">
+      <div class="event-time-col">
+        <div class="event-time-allday">All Day</div>
+      </div>
+      <div class="event-color-bar" style="background:#34a853"></div>
+      <div class="event-info">
+        <div class="event-name">1806 — Isambard Kingdom Brunel (d. 1859)</div>
+        <div class="event-loc">📍 Portsmouth, England</div>
+        <div class="event-badges">
+          <span class="badge" style="background:var(--teal-soft);color:var(--teal)">🔄 Yearly</span>
+        </div>
+      </div>
+      <button class="event-more">⋯</button>
+    </div>
+
+    <div class="event-group-label">Morning</div>
+
+    <div class="event-row">
+      <div class="event-time-col">
+        <div class="event-time-start">09:00</div>
+        <div class="event-time-end">10:00</div>
+      </div>
+      <div class="event-color-bar" style="background:#4285f4"></div>
+      <div class="event-info">
+        <div class="event-name">Sprint Planning Meeting</div>
+        <div class="event-loc">📍 Conference Room B</div>
+        <div class="event-badges">
+          <span class="badge" style="background:var(--sky-soft);color:var(--sky)">Personal</span>
+          <span class="badge" style="background:var(--teal-soft);color:var(--teal)">🔄 Weekly</span>
+        </div>
+      </div>
+      <button class="event-more">⋯</button>
+    </div>
+
+    <div class="event-row duplicate">
+      <div class="event-time-col">
+        <div class="event-time-start">09:00</div>
+        <div class="event-time-end">10:00</div>
+      </div>
+      <div class="event-color-bar" style="background:#4285f4"></div>
+      <div class="event-info">
+        <div class="event-name">Sprint Planning Meeting</div>
+        <div class="event-loc">📍 Conference Room B</div>
+        <div class="event-badges">
+          <span class="badge" style="background:var(--sky-soft);color:var(--sky)">Personal</span>
+          <span class="badge" style="background:var(--amber-soft);color:var(--amber)">⚠️ Duplicate</span>
+        </div>
+      </div>
+      <button class="event-more">⋯</button>
+    </div>
+
+    <div class="event-group-label">Afternoon</div>
+
+    <div class="event-row">
+      <div class="event-time-col">
+        <div class="event-time-start">14:30</div>
+        <div class="event-time-end">15:30</div>
+      </div>
+      <div class="event-color-bar" style="background:#9b59b6"></div>
+      <div class="event-info">
+        <div class="event-name">Dentist Appointment</div>
+        <div class="event-loc">📍 ul. Marszałkowska 12</div>
+        <div class="event-badges">
+          <span class="badge" style="background:var(--violet-soft);color:var(--violet)">Holidays</span>
+        </div>
+      </div>
+      <button class="event-more">⋯</button>
+    </div>
+
+    <div class="event-row">
+      <div class="event-time-col">
+        <div class="event-time-start">16:00</div>
+        <div class="event-time-end">17:00</div>
+      </div>
+      <div class="event-color-bar" style="background:#34a853"></div>
+      <div class="event-info">
+        <div class="event-name">Team Retrospective</div>
+        <div class="event-loc">📍 Google Meet</div>
+        <div class="event-badges">
+          <span class="badge" style="background:var(--teal-soft);color:var(--teal)">Work</span>
+        </div>
+      </div>
+      <button class="event-more">⋯</button>
+    </div>
+
+  </div>
+</section>
+
+<!-- Quick Actions -->
+<div class="quick-actions">
+  <button class="qa-btn primary">✨ AI Create</button>
+  <button class="qa-btn secondary">➕ New Event</button>
+</div>
+
+</body>
+</html>

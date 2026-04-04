@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GCA Design 2 — Timeline Feed</title>
+<style>
+  :root {
+    --bg: #0c0c0e;
+    --surface: #161619;
+    --surface-2: #1e1e24;
+    --surface-3: #282830;
+    --text: #eeeef0;
+    --text-2: #a0a0b0;
+    --text-3: #606078;
+    --blue: #5b8def;
+    --blue-soft: rgba(91,141,239,0.12);
+    --green: #4ade80;
+    --green-soft: rgba(74,222,128,0.1);
+    --orange: #f59e0b;
+    --orange-soft: rgba(245,158,11,0.1);
+    --red: #ef4444;
+    --red-soft: rgba(239,68,68,0.1);
+    --purple: #a78bfa;
+    --purple-soft: rgba(167,139,250,0.12);
+    --gradient-1: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    --border: rgba(255,255,255,0.05);
+    --radius: 20px;
+    --radius-md: 14px;
+    --radius-sm: 8px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body {
+    font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Inter', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    max-width: 430px;
+    margin: 0 auto;
+    min-height: 100vh;
+    position: relative;
+  }
+
+  /* ─── Top Section ─── */
+  .top-section {
+    padding: 48px 20px 20px;
+    position: relative;
+  }
+  .top-section::after {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 200px;
+    background: linear-gradient(180deg, rgba(91,141,239,0.06) 0%, transparent 100%);
+    pointer-events: none;
+  }
+  .greeting {
+    font-size: 14px;
+    color: var(--text-3);
+    margin-bottom: 4px;
+    position: relative;
+    z-index: 1;
+  }
+  .date-title {
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    position: relative;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .date-nav {
+    display: flex;
+    gap: 4px;
+    margin-left: auto;
+  }
+  .date-nav button {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text-2);
+    font-size: 16px;
+    cursor: pointer;
+    display: grid;
+    place-items: center;
+  }
+  .user-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+    position: relative;
+    z-index: 1;
+  }
+  .user-pill {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px 6px 6px;
+    border-radius: 24px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+  }
+  .user-avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: var(--gradient-1);
+    display: grid;
+    place-items: center;
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .user-email { font-size: 13px; color: var(--text-2); }
+
+  /* ─── Stats Row ─── */
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-bottom: 24px;
+    position: relative;
+    z-index: 1;
+  }
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 14px;
+    text-align: center;
+  }
+  .stat-number {
+    font-size: 24px;
+    font-weight: 700;
+    margin-bottom: 2px;
+  }
+  .stat-label {
+    font-size: 11px;
+    color: var(--text-3);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  /* ─── Calendar Filters ─── */
+  .calendars-bar {
+    display: flex;
+    gap: 6px;
+    padding: 0 20px 16px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .calendars-bar::-webkit-scrollbar { display: none; }
+  .cal-tag {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 14px;
+    border-radius: 24px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text-2);
+    font-size: 13px;
+    white-space: nowrap;
+    cursor: pointer;
+  }
+  .cal-tag.active { border-color: var(--blue); background: var(--blue-soft); color: var(--blue); }
+  .cal-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+  }
+
+  /* ─── Timeline ─── */
+  .timeline {
+    padding: 0 20px 120px;
+    position: relative;
+  }
+  .timeline::before {
+    content: '';
+    position: absolute;
+    left: 38px;
+    top: 0;
+    bottom: 120px;
+    width: 1.5px;
+    background: linear-gradient(180deg, var(--blue) 0%, var(--purple) 50%, transparent 100%);
+    opacity: 0.3;
+  }
+
+  .time-block {
+    position: relative;
+    margin-bottom: 8px;
+  }
+  .time-marker {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 10px;
+    position: relative;
+  }
+  .time-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--blue);
+    flex-shrink: 0;
+    position: relative;
+    left: -1px;
+    z-index: 2;
+    box-shadow: 0 0 0 3px var(--bg), 0 0 12px rgba(91,141,239,0.3);
+  }
+  .time-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-3);
+    letter-spacing: 0.3px;
+  }
+  .time-label.now {
+    color: var(--blue);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .time-label.now::after {
+    content: 'NOW';
+    font-size: 9px;
+    background: var(--blue);
+    color: white;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-weight: 700;
+  }
+
+  .event-tile {
+    margin-left: 28px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 14px 16px;
+    margin-bottom: 10px;
+    position: relative;
+    overflow: hidden;
+    transition: transform 0.15s;
+  }
+  .event-tile:active { transform: scale(0.98); }
+  .event-tile.highlight {
+    border-color: rgba(245,158,11,0.3);
+    background: linear-gradient(135deg, var(--surface) 0%, rgba(245,158,11,0.04) 100%);
+  }
+
+  .tile-accent {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 2px;
+  }
+  .tile-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+  }
+  .tile-title {
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 1.35;
+    flex: 1;
+  }
+  .tile-cal {
+    font-size: 11px;
+    padding: 3px 8px;
+    border-radius: 6px;
+    font-weight: 500;
+    white-space: nowrap;
+    margin-left: 8px;
+  }
+  .tile-details {
+    margin-top: 8px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--text-2);
+  }
+  .tile-detail {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .tile-desc {
+    margin-top: 8px;
+    font-size: 13px;
+    color: var(--text-2);
+    line-height: 1.4;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .tile-tags {
+    display: flex;
+    gap: 6px;
+    margin-top: 8px;
+  }
+  .tile-tag {
+    font-size: 10px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-weight: 600;
+  }
+
+  /* ─── All-Day Section ─── */
+  .allday-section {
+    padding: 0 20px;
+    margin-bottom: 20px;
+  }
+  .allday-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-3);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 8px;
+  }
+  .allday-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 14px 16px;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .allday-dot {
+    width: 36px;
+    height: 36px;
+    border-radius: var(--radius-sm);
+    display: grid;
+    place-items: center;
+    font-size: 16px;
+    flex-shrink: 0;
+  }
+  .allday-info { flex: 1; }
+  .allday-title { font-size: 14px; font-weight: 600; }
+  .allday-sub { font-size: 12px; color: var(--text-2); margin-top: 2px; }
+
+  /* ─── AI Pill FAB ─── */
+  .ai-fab {
+    position: fixed;
+    bottom: 28px;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 14px 28px;
+    border-radius: 28px;
+    border: none;
+    background: var(--gradient-1);
+    color: white;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 4px 32px rgba(102, 126, 234, 0.4);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    z-index: 50;
+    transition: transform 0.2s;
+  }
+  .ai-fab:active { transform: translateX(-50%) scale(0.95); }
+
+  /* ─── Design Label ─── */
+  .design-label {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    background: #667eea;
+    color: white;
+    text-align: center;
+    padding: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    z-index: 1000;
+    max-width: 430px;
+    margin: 0 auto;
+  }
+
+  /* ─── Light Theme ─── */
+  body.light {
+    --bg: #f8f8fa;
+    --surface: #ffffff;
+    --surface-2: #f0f0f4;
+    --surface-3: #e4e4ea;
+    --text: #1a1a2e;
+    --text-2: #6b6b80;
+    --text-3: #9898a8;
+    --blue: #4a72d4;
+    --blue-soft: rgba(74,114,212,0.1);
+    --green: #22c55e;
+    --green-soft: rgba(34,197,94,0.08);
+    --orange: #d97706;
+    --orange-soft: rgba(217,119,6,0.08);
+    --red: #dc2626;
+    --red-soft: rgba(220,38,38,0.08);
+    --purple: #8b5cf6;
+    --purple-soft: rgba(139,92,246,0.1);
+    --gradient-1: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    --border: rgba(0,0,0,0.06);
+  }
+  body.light .top-section::after {
+    background: linear-gradient(180deg, rgba(74,114,212,0.04) 0%, transparent 100%);
+  }
+  body.light .time-dot {
+    box-shadow: 0 0 0 3px var(--bg), 0 0 12px rgba(74,114,212,0.2);
+  }
+  body.light .stat-card { box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+  body.light .event-tile { box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+  body.light .event-tile.highlight {
+    background: linear-gradient(135deg, var(--surface) 0%, rgba(217,119,6,0.04) 100%);
+  }
+  body.light .ai-fab { box-shadow: 0 4px 32px rgba(102, 126, 234, 0.25); }
+  body.light .time-label.now::after { color: white; }
+
+  /* ─── Theme Toggle ─── */
+  .theme-toggle {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text-2);
+    display: grid;
+    place-items: center;
+    font-size: 14px;
+    cursor: pointer;
+  }
+</style>
+</head>
+<body>
+
+<div class="design-label">Design 2 — Timeline Feed</div>
+
+<!-- Top Section -->
+<section class="top-section">
+  <div class="user-row">
+    <div></div>
+    <div style="display:flex;align-items:center;gap:8px">
+      <button class="theme-toggle" onclick="document.body.classList.toggle('light');this.textContent=document.body.classList.contains('light')?'🌙':'☀️'">☀️</button>
+      <div class="user-pill">
+        <div class="user-avatar">YC</div>
+        <span class="user-email">yurii@epam.com</span>
+      </div>
+    </div>
+  </div>
+  <div class="greeting">Good morning, Yurii</div>
+  <div class="date-title">
+    April 4
+    <div class="date-nav">
+      <button>‹</button>
+      <button>›</button>
+    </div>
+  </div>
+
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="stat-number" style="color:var(--blue)">5</div>
+      <div class="stat-label">Events</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-number" style="color:var(--orange)">2</div>
+      <div class="stat-label">Duplicates</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-number" style="color:var(--green)">3</div>
+      <div class="stat-label">Calendars</div>
+    </div>
+  </div>
+</section>
+
+<!-- Calendar Filters -->
+<div class="calendars-bar">
+  <div class="cal-tag active">All (5)</div>
+  <div class="cal-tag">
+    <span class="cal-dot" style="background:#4285f4"></span>
+    Personal
+  </div>
+  <div class="cal-tag">
+    <span class="cal-dot" style="background:#34a853"></span>
+    Work
+  </div>
+  <div class="cal-tag">
+    <span class="cal-dot" style="background:#9b59b6"></span>
+    Holidays
+  </div>
+</div>
+
+<!-- All-Day Events -->
+<section class="allday-section">
+  <div class="allday-label">All Day</div>
+  <div class="allday-card">
+    <div class="allday-dot" style="background:var(--green-soft)">🎂</div>
+    <div class="allday-info">
+      <div class="allday-title">1806 — Isambard Kingdom Brunel (d. 1859)</div>
+      <div class="allday-sub">📍 Portsmouth, England · 🔄 Yearly</div>
+    </div>
+  </div>
+</section>
+
+<!-- Timeline -->
+<section class="timeline">
+
+  <!-- 09:00 -->
+  <div class="time-block">
+    <div class="time-marker">
+      <div class="time-dot"></div>
+      <div class="time-label">09:00</div>
+    </div>
+    <div class="event-tile">
+      <div class="tile-accent" style="background:#4285f4"></div>
+      <div class="tile-row">
+        <span class="tile-title">Sprint Planning Meeting</span>
+        <span class="tile-cal" style="background:var(--blue-soft);color:var(--blue)">Personal</span>
+      </div>
+      <div class="tile-details">
+        <span class="tile-detail">🕐 09:00 – 10:00</span>
+        <span class="tile-detail">📍 Conference Room B</span>
+      </div>
+      <div class="tile-tags">
+        <span class="tile-tag" style="background:rgba(74,222,128,0.1);color:var(--green)">🔄 Weekly</span>
+      </div>
+    </div>
+    <div class="event-tile highlight">
+      <div class="tile-accent" style="background:#4285f4"></div>
+      <div class="tile-row">
+        <span class="tile-title">Sprint Planning Meeting</span>
+        <span class="tile-cal" style="background:var(--blue-soft);color:var(--blue)">Personal</span>
+      </div>
+      <div class="tile-details">
+        <span class="tile-detail">🕐 09:00 – 10:00</span>
+        <span class="tile-detail">📍 Conference Room B</span>
+      </div>
+      <div class="tile-tags">
+        <span class="tile-tag" style="background:var(--orange-soft);color:var(--orange)">⚠️ Duplicate</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 14:30 -->
+  <div class="time-block">
+    <div class="time-marker">
+      <div class="time-dot" style="background:var(--purple)"></div>
+      <div class="time-label now">14:30</div>
+    </div>
+    <div class="event-tile">
+      <div class="tile-accent" style="background:#9b59b6"></div>
+      <div class="tile-row">
+        <span class="tile-title">Dentist Appointment</span>
+        <span class="tile-cal" style="background:var(--purple-soft);color:var(--purple)">Holidays</span>
+      </div>
+      <div class="tile-details">
+        <span class="tile-detail">🕐 14:30 – 15:30</span>
+        <span class="tile-detail">📍 ul. Marszałkowska 12</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 16:00 -->
+  <div class="time-block">
+    <div class="time-marker">
+      <div class="time-dot" style="background:var(--green)"></div>
+      <div class="time-label">16:00</div>
+    </div>
+    <div class="event-tile">
+      <div class="tile-accent" style="background:#34a853"></div>
+      <div class="tile-row">
+        <span class="tile-title">Team Retrospective</span>
+        <span class="tile-cal" style="background:var(--green-soft);color:var(--green)">Work</span>
+      </div>
+      <div class="tile-details">
+        <span class="tile-detail">🕐 16:00 – 17:00</span>
+        <span class="tile-detail">📍 Google Meet</span>
+      </div>
+      <div class="tile-desc">End-of-sprint retro. Topics: deployment process, testing gaps, onboarding improvements.</div>
+    </div>
+  </div>
+
+</section>
+
+<!-- AI FAB -->
+<button class="ai-fab">✨ Create with AI</button>
+
+</body>
+</html>
