@@ -8,7 +8,7 @@ import { RecurrenceDialog } from "./cells/recurrence-dialog";
 import type { CalendarEvent } from "@/lib/types/event";
 import type { CalendarInfo } from "@/lib/types/calendar";
 import type { EventUpdateFields, RecurrenceMode } from "@/lib/types/event-update";
-import { format, parseISO } from "date-fns";
+import { format, parseISO, addDays, subDays } from "date-fns";
 
 interface EditPanelProps {
   event: CalendarEvent | null;
@@ -46,16 +46,22 @@ export function EditPanel({
   const [recurrenceOpen, setRecurrenceOpen] = useState(false);
   const [pendingAction, setPendingAction] = useState<"save" | "delete" | null>(null);
   const [pendingFields, setPendingFields] = useState<EventUpdateFields | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (event && open) {
+      setError(null);
       setSummary(event.summary);
       setLocation(event.location ?? "");
       setDescription(event.description ?? "");
       setStatus(event.status);
       if (event.isAllDay) {
         setStartDate(event.start.split("T")[0]);
-        setEndDate(event.end.split("T")[0]);
+        // Google Calendar uses exclusive end dates for all-day events.
+        // "April 5" means the event ends before April 5 (i.e., it's on April 4).
+        // Show the inclusive last day to the user.
+        const exclusiveEnd = event.end.split("T")[0];
+        setEndDate(format(subDays(parseISO(exclusiveEnd), 1), "yyyy-MM-dd"));
         setStartTime("");
         setEndTime("");
       } else {
@@ -86,8 +92,10 @@ export function EditPanel({
     if (event!.isAllDay) {
       if (startDate !== event!.start.split("T")[0])
         fields.start = { date: startDate };
-      if (endDate !== event!.end.split("T")[0])
-        fields.end = { date: endDate };
+      // Convert user's inclusive end date back to Google's exclusive format
+      const origEndInclusive = format(subDays(parseISO(event!.end.split("T")[0]), 1), "yyyy-MM-dd");
+      if (endDate !== origEndInclusive)
+        fields.end = { date: format(addDays(parseISO(endDate), 1), "yyyy-MM-dd") };
     } else {
       const origStart = format(parseISO(event!.start), "yyyy-MM-dd'T'HH:mm");
       const newStart = `${startDate}T${startTime}`;
@@ -117,6 +125,7 @@ export function EditPanel({
     }
 
     setSaving(true);
+    setError(null);
     try {
       await onUpdateEvent(
         event!.id,
@@ -126,6 +135,8 @@ export function EditPanel({
         event!.recurringEventId
       );
       onClose();
+    } catch (err: any) {
+      setError(err.message || "Failed to save event");
     } finally {
       setSaving(false);
       setPendingFields(null);
@@ -249,6 +260,10 @@ export function EditPanel({
           <option value="cancelled">Cancelled</option>
         </select>
       </div>
+
+      {error && (
+        <p className="text-sm font-medium text-destructive">{error}</p>
+      )}
 
       <div className="flex flex-col gap-2 pt-2">
         <Button onClick={() => handleSave()} disabled={saving}>

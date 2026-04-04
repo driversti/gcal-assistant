@@ -110,6 +110,9 @@ export function TopBar({
         <PopoverContent className="w-auto p-0" align="start">
           <Calendar
             mode="single"
+            captionLayout="dropdown"
+            startMonth={new Date(1900, 0)}
+            endMonth={new Date(2100, 11)}
             selected={date}
             onSelect={(d) => {
               if (d) {
@@ -151,11 +154,11 @@ export function TopBar({
             </span>
           )}
         </PopoverTrigger>
-        <PopoverContent align="end" className="w-64">
+        <PopoverContent align="end" className="w-72">
           <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             Calendars
           </div>
-          <ScrollArea className="max-h-[250px]">
+          <ScrollArea className="max-h-[60vh]">
             <div className="flex flex-col gap-1">
               {calendars.map((cal) => (
                 <label

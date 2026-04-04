@@ -52,8 +52,17 @@ export async function listEventsForDate(
     }
   }
 
+  // Filter out all-day events that don't actually start on this date.
+  // Google Calendar uses exclusive end dates for all-day events, so an event
+  // on April 4 has end="2026-04-05". The API returns it for April 5 queries
+  // because the time ranges overlap. We filter those out here.
+  const filtered = events.filter((e) => {
+    if (!e.isAllDay) return true;
+    return e.start === date;
+  });
+
   // Sort: all-day events first, then by start time
-  return events.sort((a, b) => {
+  return filtered.sort((a, b) => {
     if (a.isAllDay && !b.isAllDay) return -1;
     if (!a.isAllDay && b.isAllDay) return 1;
     return a.start.localeCompare(b.start);
