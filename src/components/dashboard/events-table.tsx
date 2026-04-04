@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useCallback } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Table,
@@ -11,15 +12,30 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import type { CalendarEvent } from "@/lib/types/event";
+import type { CalendarInfo } from "@/lib/types/calendar";
+import type { EventUpdateFields, RecurrenceMode } from "@/lib/types/event-update";
 import type { ColumnKey } from "./column-toggle";
 import { ALL_COLUMNS } from "./column-toggle";
+import { InlineTextCell } from "./cells/inline-text-cell";
+import { DescriptionPopoverCell } from "./cells/description-popover-cell";
+import { DateTimePopoverCell } from "./cells/date-time-popover-cell";
+import { StatusDropdownCell } from "./cells/status-dropdown-cell";
+import { RecurrenceDialog } from "./cells/recurrence-dialog";
 
 interface EventsTableProps {
   events: CalendarEvent[];
+  calendars: CalendarInfo[];
   visibleColumns: ColumnKey[];
   selectedIds: Set<string>;
   onToggleSelect: (eventId: string) => void;
   onToggleAll: () => void;
+  onUpdateEvent: (
+    eventId: string,
+    calendarId: string,
+    fields: EventUpdateFields,
+    recurrenceMode?: RecurrenceMode,
+    recurringEventId?: string
+  ) => Promise<void>;
   duplicateGroups: Map<string, number>;
   loading: boolean;
 }
@@ -44,33 +60,13 @@ function formatDateTime(dateStr: string): string {
   });
 }
 
-function getCellValue(event: CalendarEvent, column: ColumnKey): string {
-  switch (column) {
-    case "calendar":
-      return event.calendarName;
-    case "summary":
-      return event.summary;
-    case "start":
-      return formatTime(event.start, event.isAllDay);
-    case "end":
-      return formatTime(event.end, event.isAllDay);
-    case "location":
-      return event.location ?? "";
-    case "description":
-      return event.description ?? "";
-    case "status":
-      return event.status;
-    case "created":
-      return formatDateTime(event.created);
-    case "updated":
-      return formatDateTime(event.updated);
-  }
-}
-
-// Generate a unique key that combines event ID and calendar ID
-// because the same event ID can appear in different calendars
 function eventKey(event: CalendarEvent): string {
   return `${event.calendarId}:${event.id}`;
+}
+
+function isEditable(event: CalendarEvent, calendars: CalendarInfo[]): boolean {
+  const cal = calendars.find((c) => c.id === event.calendarId);
+  return cal?.accessRole === "owner" || cal?.accessRole === "writer";
 }
 
 const DUPLICATE_COLORS = [
@@ -83,13 +79,33 @@ const DUPLICATE_COLORS = [
 
 export function EventsTable({
   events,
+  calendars,
   visibleColumns,
   selectedIds,
   onToggleSelect,
   onToggleAll,
+  onUpdateEvent,
   duplicateGroups,
   loading,
 }: EventsTableProps) {
+  const [recurrenceDialogOpen, setRecurrenceDialogOpen] = useState(false);
+  const [recurrenceCallback, setRecurrenceCallback] = useState<
+    ((mode: RecurrenceMode) => void) | null
+  >(null);
+
+  const handleRecurrencePrompt = useCallback(
+    (callback: (mode: RecurrenceMode) => void) => {
+      setRecurrenceCallback(() => callback);
+      setRecurrenceDialogOpen(true);
+    },
+    []
+  );
+
+  function handleRecurrenceConfirm(mode: RecurrenceMode) {
+    recurrenceCallback?.(mode);
+    setRecurrenceCallback(null);
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12 text-muted-foreground">
@@ -110,74 +126,151 @@ export function EventsTable({
     events.length > 0 && events.every((e) => selectedIds.has(eventKey(e)));
   const columns = ALL_COLUMNS.filter((c) => visibleColumns.includes(c.key));
 
-  return (
-    <div className="rounded-md border">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead className="w-[40px]">
-              <Checkbox checked={allSelected} onCheckedChange={onToggleAll} />
-            </TableHead>
-            {columns.map((col) => (
-              <TableHead key={col.key}>{col.label}</TableHead>
-            ))}
-            <TableHead className="w-[60px]" />
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {events.map((event) => {
-            const key = eventKey(event);
-            const dupGroup = duplicateGroups.get(key);
-            const rowClass =
-              dupGroup !== undefined
-                ? DUPLICATE_COLORS[dupGroup % DUPLICATE_COLORS.length]
-                : "";
+  function renderCell(event: CalendarEvent, column: ColumnKey) {
+    const editable = isEditable(event, calendars);
 
-            return (
-              <TableRow key={key} className={rowClass}>
-                <TableCell>
-                  <Checkbox
-                    checked={selectedIds.has(key)}
-                    onCheckedChange={() => onToggleSelect(key)}
-                  />
-                </TableCell>
-                {columns.map((col) => (
-                  <TableCell key={col.key}>
-                    {col.key === "calendar" ? (
-                      <div className="flex items-center gap-2">
-                        <span
-                          className="h-3 w-3 rounded-full shrink-0"
-                          style={{ backgroundColor: event.calendarColor }}
-                        />
-                        <span className="truncate max-w-[150px]">
-                          {event.calendarName}
-                        </span>
-                      </div>
-                    ) : col.key === "description" ? (
-                      <span
-                        className="truncate block max-w-[200px]"
-                        title={event.description ?? ""}
-                      >
-                        {getCellValue(event, col.key)}
-                      </span>
-                    ) : (
-                      getCellValue(event, col.key)
+    switch (column) {
+      case "calendar":
+        return (
+          <div className="flex items-center gap-2">
+            <span
+              className="h-3 w-3 rounded-full shrink-0"
+              style={{ backgroundColor: event.calendarColor }}
+            />
+            <span className="truncate max-w-[150px]">
+              {event.calendarName}
+            </span>
+          </div>
+        );
+
+      case "summary":
+        return (
+          <InlineTextCell
+            event={event}
+            field="summary"
+            editable={editable}
+            onSave={onUpdateEvent}
+            onRecurrencePrompt={handleRecurrencePrompt}
+          />
+        );
+
+      case "location":
+        return (
+          <InlineTextCell
+            event={event}
+            field="location"
+            editable={editable}
+            onSave={onUpdateEvent}
+            onRecurrencePrompt={handleRecurrencePrompt}
+          />
+        );
+
+      case "description":
+        return (
+          <DescriptionPopoverCell
+            event={event}
+            editable={editable}
+            onSave={onUpdateEvent}
+            onRecurrencePrompt={handleRecurrencePrompt}
+          />
+        );
+
+      case "start":
+        return (
+          <DateTimePopoverCell
+            event={event}
+            field="start"
+            editable={editable}
+            onSave={onUpdateEvent}
+            onRecurrencePrompt={handleRecurrencePrompt}
+          />
+        );
+
+      case "end":
+        return (
+          <DateTimePopoverCell
+            event={event}
+            field="end"
+            editable={editable}
+            onSave={onUpdateEvent}
+            onRecurrencePrompt={handleRecurrencePrompt}
+          />
+        );
+
+      case "status":
+        return (
+          <StatusDropdownCell
+            event={event}
+            editable={editable}
+            onSave={onUpdateEvent}
+            onRecurrencePrompt={handleRecurrencePrompt}
+          />
+        );
+
+      case "created":
+        return formatDateTime(event.created);
+
+      case "updated":
+        return formatDateTime(event.updated);
+    }
+  }
+
+  return (
+    <>
+      <div className="rounded-md border">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-[40px]">
+                <Checkbox checked={allSelected} onCheckedChange={onToggleAll} />
+              </TableHead>
+              {columns.map((col) => (
+                <TableHead key={col.key}>{col.label}</TableHead>
+              ))}
+              <TableHead className="w-[60px]" />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {events.map((event) => {
+              const key = eventKey(event);
+              const dupGroup = duplicateGroups.get(key);
+              const rowClass =
+                dupGroup !== undefined
+                  ? DUPLICATE_COLORS[dupGroup % DUPLICATE_COLORS.length]
+                  : "";
+
+              return (
+                <TableRow key={key} className={rowClass}>
+                  <TableCell>
+                    <Checkbox
+                      checked={selectedIds.has(key)}
+                      onCheckedChange={() => onToggleSelect(key)}
+                    />
+                  </TableCell>
+                  {columns.map((col) => (
+                    <TableCell key={col.key}>
+                      {renderCell(event, col.key)}
+                    </TableCell>
+                  ))}
+                  <TableCell>
+                    {dupGroup !== undefined && (
+                      <Badge variant="outline" className="text-xs">
+                        Dup {dupGroup + 1}
+                      </Badge>
                     )}
                   </TableCell>
-                ))}
-                <TableCell>
-                  {dupGroup !== undefined && (
-                    <Badge variant="outline" className="text-xs">
-                      Dup {dupGroup + 1}
-                    </Badge>
-                  )}
-                </TableCell>
-              </TableRow>
-            );
-          })}
-        </TableBody>
-      </Table>
-    </div>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+      </div>
+      <RecurrenceDialog
+        open={recurrenceDialogOpen}
+        onOpenChange={setRecurrenceDialogOpen}
+        onConfirm={handleRecurrenceConfirm}
+      />
+    </>
   );
 }
 
