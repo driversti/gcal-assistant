@@ -12,7 +12,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Trash2, ArrowRightLeft, GitCompareArrows } from "lucide-react";
+import { Trash2, ArrowRightLeft } from "lucide-react";
 import { MoveDialog } from "./move-dialog";
 import type { CalendarInfo } from "@/lib/types/calendar";
 
@@ -21,8 +21,6 @@ interface BulkActionsBarProps {
   calendars: CalendarInfo[];
   onDelete: () => Promise<void>;
   onMove: (targetCalendarId: string) => Promise<void>;
-  onCompare: () => void;
-  isComparing: boolean;
 }
 
 export function BulkActionsBar({
@@ -30,8 +28,6 @@ export function BulkActionsBar({
   calendars,
   onDelete,
   onMove,
-  onCompare,
-  isComparing,
 }: BulkActionsBarProps) {
   const [deleting, setDeleting] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -51,7 +47,7 @@ export function BulkActionsBar({
 
   return (
     <>
-      <div className="flex items-center gap-2 rounded-lg border bg-muted/50 px-4 py-2">
+      <div className="hidden items-center gap-2 rounded-lg border bg-muted/50 px-4 py-2 lg:flex">
         <span className="text-sm font-medium">
           {selectedCount} selected
         </span>
@@ -92,16 +88,7 @@ export function BulkActionsBar({
           <ArrowRightLeft className="mr-2 h-4 w-4" />
           Move
         </Button>
-        {selectedCount >= 2 && (
-          <Button
-            variant={isComparing ? "secondary" : "outline"}
-            size="sm"
-            onClick={onCompare}
-          >
-            <GitCompareArrows className="mr-2 h-4 w-4" />
-            {isComparing ? "Hide comparison" : "Compare"}
-          </Button>
-        )}
+
       </div>
       <MoveDialog
         open={moveDialogOpen}
