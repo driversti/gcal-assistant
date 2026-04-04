@@ -17,6 +17,7 @@ export type ColumnKey =
   | "location"
   | "description"
   | "status"
+  | "recurring"
   | "created"
   | "updated";
 
@@ -28,6 +29,7 @@ export const ALL_COLUMNS: { key: ColumnKey; label: string }[] = [
   { key: "location", label: "Location" },
   { key: "description", label: "Description" },
   { key: "status", label: "Status" },
+  { key: "recurring", label: "Recurring" },
   { key: "created", label: "Created" },
   { key: "updated", label: "Updated" },
 ];

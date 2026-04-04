@@ -197,6 +197,13 @@ export function EventsTable({
           />
         );
 
+      case "recurring":
+        return event.recurringEventId ? (
+          <Badge variant="outline" className="text-xs">
+            Recurring
+          </Badge>
+        ) : null;
+
       case "created":
         return formatDateTime(event.created);
 
