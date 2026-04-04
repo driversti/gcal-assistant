@@ -67,6 +67,98 @@ const DUPLICATE_COLORS = [
   "bg-purple-100 dark:bg-purple-900/30",
 ];
 
+function TimeCell({
+  event,
+  editable,
+  onSave,
+  onRecurrencePrompt,
+}: {
+  event: CalendarEvent;
+  editable: boolean;
+  onSave: EventsTableProps["onUpdateEvent"];
+  onRecurrencePrompt: (callback: (mode: RecurrenceMode) => void) => void;
+}) {
+  const startDate = event.isAllDay
+    ? new Date(event.start + "T00:00:00")
+    : new Date(event.start);
+  const endDate = event.isAllDay
+    ? new Date(event.end + "T00:00:00")
+    : new Date(event.end);
+
+  const formatDate = (d: Date) =>
+    d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+
+  if (event.isAllDay) {
+    // Google Calendar end date is exclusive for all-day events,
+    // so a single-day event has end = start + 1 day
+    const diffDays =
+      (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24);
+    if (diffDays <= 1) {
+      return (
+        <DateTimePopoverCell
+          event={event}
+          field="start"
+          editable={editable}
+          onSave={onSave}
+          onRecurrencePrompt={onRecurrencePrompt}
+        />
+      );
+    }
+    // Multi-day all-day: show "Apr 4 – Apr 6" (subtract 1 day from exclusive end)
+    const lastDay = new Date(endDate);
+    lastDay.setDate(lastDay.getDate() - 1);
+    return (
+      <span className="flex items-center gap-1 whitespace-nowrap">
+        <DateTimePopoverCell
+          event={event}
+          field="start"
+          displayText={formatDate(startDate)}
+          editable={editable}
+          onSave={onSave}
+          onRecurrencePrompt={onRecurrencePrompt}
+        />
+        <span className="text-muted-foreground">–</span>
+        <DateTimePopoverCell
+          event={event}
+          field="end"
+          displayText={formatDate(lastDay)}
+          editable={editable}
+          onSave={onSave}
+          onRecurrencePrompt={onRecurrencePrompt}
+        />
+      </span>
+    );
+  }
+
+  const sameDay = startDate.toDateString() === endDate.toDateString();
+
+  return (
+    <span className="flex items-center gap-1 whitespace-nowrap">
+      {!sameDay && (
+        <span className="text-muted-foreground">{formatDate(startDate)}</span>
+      )}
+      <DateTimePopoverCell
+        event={event}
+        field="start"
+        editable={editable}
+        onSave={onSave}
+        onRecurrencePrompt={onRecurrencePrompt}
+      />
+      <span className="text-muted-foreground">–</span>
+      {!sameDay && (
+        <span className="text-muted-foreground">{formatDate(endDate)}</span>
+      )}
+      <DateTimePopoverCell
+        event={event}
+        field="end"
+        editable={editable}
+        onSave={onSave}
+        onRecurrencePrompt={onRecurrencePrompt}
+      />
+    </span>
+  );
+}
+
 export function EventsTable({
   events,
   calendars,
@@ -165,22 +257,10 @@ export function EventsTable({
           />
         );
 
-      case "start":
+      case "time":
         return (
-          <DateTimePopoverCell
+          <TimeCell
             event={event}
-            field="start"
-            editable={editable}
-            onSave={onUpdateEvent}
-            onRecurrencePrompt={handleRecurrencePrompt}
-          />
-        );
-
-      case "end":
-        return (
-          <DateTimePopoverCell
-            event={event}
-            field="end"
             editable={editable}
             onSave={onUpdateEvent}
             onRecurrencePrompt={handleRecurrencePrompt}

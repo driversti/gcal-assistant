@@ -17,6 +17,7 @@ interface DateTimePopoverCellProps {
   event: CalendarEvent;
   field: "start" | "end";
   editable: boolean;
+  displayText?: string;
   onSave: (
     eventId: string,
     calendarId: string,
@@ -66,11 +67,12 @@ export function DateTimePopoverCell({
   event,
   field,
   editable,
+  displayText,
   onSave,
   onRecurrencePrompt,
 }: DateTimePopoverCellProps) {
   const dateStr = field === "start" ? event.start : event.end;
-  const displayValue = formatTime(dateStr, event.isAllDay);
+  const displayValue = displayText ?? formatTime(dateStr, event.isAllDay);
 
   const [open, setOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date>(

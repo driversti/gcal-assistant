@@ -12,8 +12,7 @@ import { Settings2 } from "lucide-react";
 export type ColumnKey =
   | "calendar"
   | "summary"
-  | "start"
-  | "end"
+  | "time"
   | "location"
   | "description"
   | "status"
@@ -24,8 +23,7 @@ export type ColumnKey =
 export const ALL_COLUMNS: { key: ColumnKey; label: string }[] = [
   { key: "calendar", label: "Calendar" },
   { key: "summary", label: "Summary" },
-  { key: "start", label: "Start" },
-  { key: "end", label: "End" },
+  { key: "time", label: "Time" },
   { key: "location", label: "Location" },
   { key: "description", label: "Description" },
   { key: "status", label: "Status" },
@@ -37,8 +35,7 @@ export const ALL_COLUMNS: { key: ColumnKey; label: string }[] = [
 export const DEFAULT_COLUMNS: ColumnKey[] = [
   "calendar",
   "summary",
-  "start",
-  "end",
+  "time",
   "location",
 ];
 
