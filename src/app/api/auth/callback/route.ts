@@ -1,13 +1,28 @@
 import { type NextRequest, NextResponse } from "next/server";
+import { cookies } from "next/headers";
 import { createOAuth2Client } from "@/lib/google/auth";
 import { encryptSession, setSessionCookie } from "@/lib/auth/session";
 import { google } from "googleapis";
+
+const OAUTH_STATE_COOKIE = "gca_oauth_state";
 
 export async function GET(request: NextRequest) {
   const code = request.nextUrl.searchParams.get("code");
 
   if (!code) {
     return NextResponse.redirect(new URL("/?error=no_code", request.url));
+  }
+
+  // Validate OAuth state to prevent login CSRF
+  const returnedState = request.nextUrl.searchParams.get("state");
+  const cookieStore = await cookies();
+  const storedState = cookieStore.get(OAUTH_STATE_COOKIE)?.value;
+  cookieStore.delete(OAUTH_STATE_COOKIE);
+
+  if (!returnedState || !storedState || returnedState !== storedState) {
+    return NextResponse.redirect(
+      new URL("/?error=invalid_state", request.url)
+    );
   }
 
   try {
@@ -30,7 +45,8 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.redirect(new URL("/dashboard", request.url));
   } catch (error) {
-    console.error("OAuth callback error:", error);
+    const message = error instanceof Error ? error.message : "Unknown error";
+    console.error("OAuth callback error:", message);
     return NextResponse.redirect(new URL("/?error=auth_failed", request.url));
   }
 }

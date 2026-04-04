@@ -40,6 +40,12 @@ yarn-error.log*
 # superpowers
 .superpowers/
 
+# IDE
+.idea/
+
+# Playwright MCP
+.playwright-mcp/
+
 # vercel
 .vercel
 

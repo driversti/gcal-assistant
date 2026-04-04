@@ -13,7 +13,13 @@ export interface SessionTokens {
 function getSecretKey(): Uint8Array {
   const secret = process.env.SESSION_SECRET;
   if (!secret) throw new Error("SESSION_SECRET is not set");
-  return new TextEncoder().encode(secret.padEnd(32, "0").slice(0, 32));
+  if (secret.length < 32) {
+    throw new Error(
+      "SESSION_SECRET must be at least 32 characters. " +
+        "Generate one with: openssl rand -hex 32"
+    );
+  }
+  return new TextEncoder().encode(secret.slice(0, 32));
 }
 
 export async function encryptSession(tokens: SessionTokens): Promise<string> {
