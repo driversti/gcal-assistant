@@ -124,6 +124,7 @@ export default function DashboardPage() {
     const eventsToDelete = selectedEvents.map((e) => ({
       id: e.id,
       calendarId: e.calendarId,
+      recurringEventId: e.recurringEventId,
     }));
 
     await fetch("/api/events/bulk", {

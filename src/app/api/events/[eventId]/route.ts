@@ -14,6 +14,7 @@ export async function DELETE(
 
   const { eventId } = await params;
   const calendarId = request.nextUrl.searchParams.get("calendarId");
+  const recurringEventId = request.nextUrl.searchParams.get("recurringEventId");
 
   if (!calendarId) {
     return NextResponse.json(
@@ -22,7 +23,8 @@ export async function DELETE(
     );
   }
 
-  await deleteEvent(client, calendarId, eventId);
+  // Use recurringEventId to delete the whole series, or eventId for a single event
+  await deleteEvent(client, calendarId, recurringEventId ?? eventId);
   return NextResponse.json({ success: true });
 }
 

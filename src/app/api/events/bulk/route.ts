@@ -4,7 +4,7 @@ import { deleteEvent, moveEvent } from "@/lib/google/events";
 
 interface BulkRequest {
   action: "delete" | "move";
-  events: { id: string; calendarId: string }[];
+  events: { id: string; calendarId: string; recurringEventId?: string }[];
   targetCalendarId?: string;
 }
 
@@ -18,9 +18,18 @@ export async function POST(request: Request) {
   const results: { id: string; success: boolean; error?: string }[] = [];
 
   if (body.action === "delete") {
+    // Deduplicate: if multiple instances of the same recurring series are selected,
+    // delete the series only once (using the recurringEventId)
+    const seen = new Set<string>();
     for (const event of body.events) {
+      const deleteId = event.recurringEventId ?? event.id;
+      if (seen.has(deleteId)) {
+        results.push({ id: event.id, success: true });
+        continue;
+      }
+      seen.add(deleteId);
       try {
-        await deleteEvent(client, event.calendarId, event.id);
+        await deleteEvent(client, event.calendarId, deleteId);
         results.push({ id: event.id, success: true });
       } catch (error) {
         results.push({
