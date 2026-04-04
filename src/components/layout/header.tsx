@@ -1,6 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { Calendar, LogOut } from "lucide-react";
 import { useRouter } from "next/navigation";
 
@@ -20,6 +21,7 @@ export function Header({ email }: { email: string }) {
       </div>
       <div className="flex items-center gap-4">
         <span className="text-sm text-muted-foreground">{email}</span>
+        <ThemeToggle />
         <Button variant="ghost" size="sm" onClick={handleLogout}>
           <LogOut className="mr-2 h-4 w-4" />
           Sign out
