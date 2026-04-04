@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useCalendars } from "@/hooks/use-calendars";
 import { useEvents } from "@/hooks/use-events";
@@ -35,11 +35,30 @@ export default function DashboardPage() {
 
   // Calendar state
   const { calendars, loading: calendarsLoading } = useCalendars();
-  const [selectedCalendarIds, setSelectedCalendarIds] = useState<string[]>([]);
+  const [selectedCalendarIds, setSelectedCalendarIds] = useState<string[] | null>(null);
 
-  // Auto-select all calendars when they load
+  // Load saved selection from localStorage on mount
+  useEffect(() => {
+    const saved = localStorage.getItem("gca:selectedCalendarIds");
+    if (saved) {
+      try {
+        setSelectedCalendarIds(JSON.parse(saved));
+      } catch {
+        setSelectedCalendarIds(null);
+      }
+    }
+  }, []);
+
+  // Persist selection to localStorage
+  useEffect(() => {
+    if (selectedCalendarIds !== null) {
+      localStorage.setItem("gca:selectedCalendarIds", JSON.stringify(selectedCalendarIds));
+    }
+  }, [selectedCalendarIds]);
+
+  // Use saved selection, or all calendars if nothing saved yet
   const calendarIds = useMemo(() => {
-    if (selectedCalendarIds.length > 0) return selectedCalendarIds;
+    if (selectedCalendarIds !== null && selectedCalendarIds.length > 0) return selectedCalendarIds;
     return calendars.map((c) => c.id);
   }, [calendars, selectedCalendarIds]);
 
@@ -67,7 +86,7 @@ export default function DashboardPage() {
 
   function handleCalendarToggle(id: string) {
     setSelectedCalendarIds((prev) => {
-      const currentIds = prev.length > 0 ? prev : calendars.map((c) => c.id);
+      const currentIds = prev !== null && prev.length > 0 ? prev : calendars.map((c) => c.id);
       if (currentIds.includes(id)) {
         return currentIds.filter((cid) => cid !== id);
       }
