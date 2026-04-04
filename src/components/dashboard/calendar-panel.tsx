@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
 import { Calendar } from "@/components/ui/calendar";
@@ -14,7 +14,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { ChevronDown, ChevronUp, LogOut, Moon, Sun } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, LogOut, Moon, Sun } from "lucide-react";
 import type { CalendarInfo } from "@/lib/types/calendar";
 
 interface CalendarPanelProps {
@@ -40,6 +40,9 @@ export function CalendarPanel({
   const { theme, setTheme } = useTheme();
   const [calendarExpanded, setCalendarExpanded] = useState(true);
   const [filtersExpanded, setFiltersExpanded] = useState(true);
+  const [displayMonth, setDisplayMonth] = useState(date);
+
+  useEffect(() => { setDisplayMonth(date); }, [date]);
 
   async function handleLogout() {
     await fetch("/api/auth/logout", { method: "POST" });
@@ -96,24 +99,44 @@ export function CalendarPanel({
 
       {/* Mini Calendar (collapsible on mobile) */}
       <div>
-        <button
-          onClick={() => setCalendarExpanded(!calendarExpanded)}
-          className="flex w-full items-center justify-between lg:pointer-events-none"
-        >
-          <span className="text-lg font-bold">
-            {date.toLocaleDateString("en-US", {
-              month: "long",
-              year: "numeric",
-            })}
-          </span>
-          <span className="lg:hidden">
-            {calendarExpanded ? (
-              <ChevronUp className="h-4 w-4 text-muted-foreground" />
-            ) : (
-              <ChevronDown className="h-4 w-4 text-muted-foreground" />
-            )}
-          </span>
-        </button>
+        <div className="flex items-center justify-between">
+          <button
+            onClick={() => setCalendarExpanded(!calendarExpanded)}
+            className="flex items-center gap-1 lg:pointer-events-none"
+          >
+            <span className="text-lg font-bold">
+              {displayMonth.toLocaleDateString("en-US", {
+                month: "long",
+                year: "numeric",
+              })}
+            </span>
+            <span className="lg:hidden">
+              {calendarExpanded ? (
+                <ChevronUp className="h-4 w-4 text-muted-foreground" />
+              ) : (
+                <ChevronDown className="h-4 w-4 text-muted-foreground" />
+              )}
+            </span>
+          </button>
+          <div className="flex gap-1">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7"
+              onClick={() => setDisplayMonth(new Date(displayMonth.getFullYear(), displayMonth.getMonth() - 1, 1))}
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7"
+              onClick={() => setDisplayMonth(new Date(displayMonth.getFullYear(), displayMonth.getMonth() + 1, 1))}
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
 
         <div
           className={`overflow-hidden transition-all duration-200 ${
@@ -124,8 +147,12 @@ export function CalendarPanel({
             mode="single"
             selected={date}
             onSelect={(d) => d && onDateChange(d)}
-            defaultMonth={date}
-            className="mt-2"
+            month={displayMonth}
+            onMonthChange={setDisplayMonth}
+            className="mt-2 w-full [&_.rdp-root]:w-full [&_.rdp-month]:w-full [&_.rdp-nav]:hidden [&_.rdp-month_caption]:hidden"
+            classNames={{
+              root: "w-full",
+            }}
           />
         </div>
       </div>
