@@ -1,6 +1,5 @@
 import { getSession } from "@/lib/auth/session";
 import { redirect } from "next/navigation";
-import { Header } from "@/components/layout/header";
 
 export default async function DashboardLayout({
   children,
@@ -12,8 +11,7 @@ export default async function DashboardLayout({
 
   return (
     <div className="flex h-screen flex-col">
-      <Header email={session.email} />
-      <main className="flex-1 overflow-auto">{children}</main>
+      <main className="flex-1 overflow-hidden">{children}</main>
     </div>
   );
 }
