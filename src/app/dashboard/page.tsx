@@ -2,23 +2,15 @@
 
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { useCalendars } from "@/hooks/use-calendars";
 import { useEvents } from "@/hooks/use-events";
-import { CalendarFilter } from "@/components/dashboard/calendar-filter";
-import { DatePicker } from "@/components/dashboard/date-picker";
-import { EventsTable, eventKey } from "@/components/dashboard/events-table";
-import {
-  ColumnToggle,
-  DEFAULT_COLUMNS,
-  type ColumnKey,
-} from "@/components/dashboard/column-toggle";
-import { BulkActionsBar } from "@/components/dashboard/bulk-actions-bar";
-import { EventComparison } from "@/components/dashboard/event-comparison";
+import { TopBar } from "@/components/dashboard/top-bar";
+import { TimelineView } from "@/components/dashboard/timeline-view";
+import { EditPanel } from "@/components/dashboard/edit-panel";
 import { AiCreateFab } from "@/components/dashboard/ai-create-fab";
 import { AiCreateEventDialog } from "@/components/dashboard/ai-create-event-dialog";
 import { detectDuplicates } from "@/lib/duplicates";
+import type { CalendarEvent } from "@/lib/types/event";
 import type { EventUpdateFields, RecurrenceMode } from "@/lib/types/event-update";
 
 function toDateString(date: Date): string {
@@ -32,16 +24,13 @@ export default function DashboardPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  // Date from URL params or today
   const dateParam = searchParams.get("date");
   const date = dateParam ? new Date(dateParam + "T12:00:00") : new Date();
   const dateString = toDateString(date);
 
-  // Calendar state
   const { calendars, loading: calendarsLoading } = useCalendars();
   const [selectedCalendarIds, setSelectedCalendarIds] = useState<string[] | null>(null);
 
-  // Load saved selection from localStorage on mount
   useEffect(() => {
     const saved = localStorage.getItem("gca:selectedCalendarIds");
     if (saved) {
@@ -53,45 +42,43 @@ export default function DashboardPage() {
     }
   }, []);
 
-  // Persist selection to localStorage
   useEffect(() => {
     if (selectedCalendarIds !== null) {
       localStorage.setItem("gca:selectedCalendarIds", JSON.stringify(selectedCalendarIds));
     }
   }, [selectedCalendarIds]);
 
-  // Use saved selection, or all calendars if nothing saved yet
   const calendarIds = useMemo(() => {
     if (selectedCalendarIds !== null && selectedCalendarIds.length > 0) return selectedCalendarIds;
     return calendars.map((c) => c.id);
   }, [calendars, selectedCalendarIds]);
 
-  // Events
   const { events, loading: eventsLoading, refetch } = useEvents(dateString, calendarIds);
 
-  // Column visibility
-  const [visibleColumns, setVisibleColumns] =
-    useState<ColumnKey[]>(DEFAULT_COLUMNS);
-
-  // Selection
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [isComparing, setIsComparing] = useState(false);
-
-  // Duplicate detection
   const duplicateGroups = useMemo(() => detectDuplicates(events), [events]);
 
-  // Sidebar
-  const [sidebarOpen, setSidebarOpen] = useState(true);
-
-  // AI Create Event dialog
   const [aiCreateOpen, setAiCreateOpen] = useState(false);
+
+  const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null);
+
+  const [email, setEmail] = useState("");
+  useEffect(() => {
+    fetch("/api/auth/session")
+      .then((r) => r.json())
+      .then((data) => setEmail(data.email ?? ""))
+      .catch(() => {});
+  }, []);
+
+  const [currentHour, setCurrentHour] = useState(new Date().getHours());
+  useEffect(() => {
+    const interval = setInterval(() => setCurrentHour(new Date().getHours()), 60_000);
+    return () => clearInterval(interval);
+  }, []);
 
   function handleDateChange(newDate: Date) {
     const params = new URLSearchParams(searchParams.toString());
     params.set("date", toDateString(newDate));
     router.push(`/dashboard?${params.toString()}`);
-    setSelectedIds(new Set());
-    setIsComparing(false);
   }
 
   function handleCalendarToggle(id: string) {
@@ -103,74 +90,6 @@ export default function DashboardPage() {
       return [...currentIds, id];
     });
   }
-
-  function handleColumnToggle(key: ColumnKey) {
-    setVisibleColumns((prev) =>
-      prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]
-    );
-  }
-
-  function handleToggleSelect(key: string) {
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
-      return next;
-    });
-  }
-
-  function handleToggleAll() {
-    const allKeys = events.map((e) => eventKey(e));
-    const allSelected = allKeys.every((k) => selectedIds.has(k));
-    setSelectedIds(allSelected ? new Set() : new Set(allKeys));
-  }
-
-  const selectedEvents = useMemo(
-    () => events.filter((e) => selectedIds.has(eventKey(e))),
-    [events, selectedIds]
-  );
-
-  const handleDelete = useCallback(async () => {
-    const eventsToDelete = selectedEvents.map((e) => ({
-      id: e.id,
-      calendarId: e.calendarId,
-      recurringEventId: e.recurringEventId,
-    }));
-
-    await fetch("/api/events/bulk", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "delete", events: eventsToDelete }),
-    });
-
-    setSelectedIds(new Set());
-    setIsComparing(false);
-    refetch();
-  }, [selectedEvents, refetch]);
-
-  const handleMove = useCallback(
-    async (targetCalendarId: string) => {
-      const eventsToMove = selectedEvents.map((e) => ({
-        id: e.id,
-        calendarId: e.calendarId,
-      }));
-
-      await fetch("/api/events/bulk", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "move",
-          events: eventsToMove,
-          targetCalendarId,
-        }),
-      });
-
-      setSelectedIds(new Set());
-      setIsComparing(false);
-      refetch();
-    },
-    [selectedEvents, refetch]
-  );
 
   const handleUpdateEvent = useCallback(
     async (
@@ -201,80 +120,85 @@ export default function DashboardPage() {
     [refetch]
   );
 
+  const handleDeleteEvent = useCallback(
+    async (event: CalendarEvent, recurrenceMode?: RecurrenceMode) => {
+      await fetch("/api/events/bulk", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "delete",
+          events: [{
+            id: event.id,
+            calendarId: event.calendarId,
+            recurringEventId: event.recurringEventId,
+          }],
+          recurrenceMode,
+        }),
+      });
+      setEditingEvent(null);
+      refetch();
+    },
+    [refetch]
+  );
+
+  const handleMoveEvent = useCallback(
+    async (event: CalendarEvent, targetCalendarId: string) => {
+      await fetch("/api/events/bulk", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "move",
+          events: [{ id: event.id, calendarId: event.calendarId }],
+          targetCalendarId,
+        }),
+      });
+      refetch();
+    },
+    [refetch]
+  );
+
+  const isEditOpen = !!editingEvent;
+
   return (
-    <div className="flex h-full">
-      {/* Sidebar */}
-      <aside
-        className={`shrink-0 border-r transition-all duration-200 ${
-          sidebarOpen ? "w-64 p-4" : "w-10 p-2"
-        }`}
-      >
-        <div className={`flex ${sidebarOpen ? "justify-end" : "justify-center"}`}>
-          <Button
-            variant="ghost"
-            size="icon-xs"
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-            title={sidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
-          >
-            {sidebarOpen ? (
-              <PanelLeftClose className="h-4 w-4" />
-            ) : (
-              <PanelLeftOpen className="h-4 w-4" />
-            )}
-          </Button>
-        </div>
-        {sidebarOpen && (
-          <CalendarFilter
+    <div className="flex h-full flex-col">
+      <TopBar
+        date={date}
+        dateString={dateString}
+        onDateChange={handleDateChange}
+        calendars={calendars}
+        selectedCalendarIds={calendarIds}
+        totalCalendarCount={calendars.length}
+        onCalendarToggle={handleCalendarToggle}
+        email={email}
+      />
+
+      <div className="flex flex-1 overflow-hidden">
+        <div className={`flex-1 overflow-auto p-4 ${isEditOpen ? "sm:mr-0" : ""}`}>
+          <TimelineView
+            events={events}
             calendars={calendars}
-            selectedIds={calendarIds}
-            onToggle={handleCalendarToggle}
-            loading={calendarsLoading}
-          />
-        )}
-      </aside>
-
-      {/* Main content */}
-      <div className="flex flex-1 flex-col gap-4 overflow-auto p-6">
-        {/* Top bar: date picker + column toggle */}
-        <div className="flex items-center justify-between">
-          <DatePicker date={date} onDateChange={handleDateChange} />
-          <ColumnToggle
-            visibleColumns={visibleColumns}
-            onToggle={handleColumnToggle}
+            duplicateGroups={duplicateGroups}
+            loading={eventsLoading}
+            currentHour={currentHour}
+            onEditEvent={(event) => setEditingEvent(event)}
+            onDeleteEvent={handleDeleteEvent}
+            onMoveEvent={handleMoveEvent}
+            onRefetch={refetch}
           />
         </div>
 
-        {/* Bulk actions */}
-        <BulkActionsBar
-          selectedCount={selectedIds.size}
-          calendars={calendars}
-          onDelete={handleDelete}
-          onMove={handleMove}
-          onCompare={() => setIsComparing(!isComparing)}
-          isComparing={isComparing}
-        />
-
-        {/* Events table */}
-        <EventsTable
-          events={events}
-          calendars={calendars}
-          visibleColumns={visibleColumns}
-          selectedIds={selectedIds}
-          onToggleSelect={handleToggleSelect}
-          onToggleAll={handleToggleAll}
-          onUpdateEvent={handleUpdateEvent}
-          duplicateGroups={duplicateGroups}
-          loading={eventsLoading}
-          onRefetch={refetch}
-        />
-
-        {/* Comparison view */}
-        {isComparing && selectedEvents.length >= 2 && (
-          <EventComparison events={selectedEvents} />
+        {isEditOpen && (
+          <EditPanel
+            event={editingEvent}
+            calendars={calendars}
+            open={isEditOpen}
+            onClose={() => setEditingEvent(null)}
+            onUpdateEvent={handleUpdateEvent}
+            onDelete={handleDeleteEvent}
+          />
         )}
       </div>
 
-      {/* AI Create Event */}
       <AiCreateFab onClick={() => setAiCreateOpen(true)} />
       <AiCreateEventDialog
         open={aiCreateOpen}
