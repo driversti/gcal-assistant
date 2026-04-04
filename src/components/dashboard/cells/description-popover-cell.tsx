@@ -89,14 +89,12 @@ export function DescriptionPopoverCell({
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <div
-          className="group flex cursor-pointer items-center gap-1 max-w-[200px]"
-          title={value}
-        >
-          <span className="truncate">{value || "Add description"}</span>
-          <Pencil className="h-3 w-3 shrink-0 opacity-0 group-hover:opacity-50 text-muted-foreground" />
-        </div>
+      <PopoverTrigger
+        className="group flex cursor-pointer items-center gap-1 max-w-[200px]"
+        title={value}
+      >
+        <span className="truncate">{value || "Add description"}</span>
+        <Pencil className="h-3 w-3 shrink-0 opacity-0 group-hover:opacity-50 text-muted-foreground" />
       </PopoverTrigger>
       <PopoverContent className="w-80" align="start">
         <div className="flex flex-col gap-2">

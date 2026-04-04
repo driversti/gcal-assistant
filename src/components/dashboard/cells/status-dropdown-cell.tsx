@@ -87,18 +87,16 @@ export function StatusDropdownCell({
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <button
-          className="cursor-pointer rounded px-1 py-0.5 text-sm hover:bg-accent"
-          title={error ?? "Click to change status"}
+      <DropdownMenuTrigger
+        className="cursor-pointer rounded px-1 py-0.5 text-sm hover:bg-accent"
+        title={error ?? "Click to change status"}
+      >
+        <Badge
+          variant="outline"
+          className={error ? "border-destructive text-destructive" : ""}
         >
-          <Badge
-            variant="outline"
-            className={error ? "border-destructive text-destructive" : ""}
-          >
-            {event.status}
-          </Badge>
-        </button>
+          {event.status}
+        </Badge>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start">
         {STATUS_OPTIONS.map((opt) => (

@@ -172,11 +172,9 @@ export function DateTimePopoverCell({
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <div className="group flex cursor-pointer items-center gap-1">
-          <span>{displayValue}</span>
-          <Pencil className="h-3 w-3 opacity-0 group-hover:opacity-50 text-muted-foreground" />
-        </div>
+      <PopoverTrigger className="group flex cursor-pointer items-center gap-1">
+        <span>{displayValue}</span>
+        <Pencil className="h-3 w-3 opacity-0 group-hover:opacity-50 text-muted-foreground" />
       </PopoverTrigger>
       <PopoverContent className="w-auto p-0" align="start">
         <div className="flex flex-col gap-3 p-3">
