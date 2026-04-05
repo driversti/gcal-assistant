@@ -160,7 +160,7 @@ export default function DashboardPage() {
   const isEditOpen = !!editingEvent;
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="relative flex h-full flex-col">
       <TopBar
         date={date}
         dateString={dateString}

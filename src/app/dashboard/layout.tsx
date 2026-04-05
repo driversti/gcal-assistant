@@ -9,5 +9,5 @@ export default async function DashboardLayout({
   const session = await getSession();
   if (!session) redirect("/");
 
-  return <main className="h-screen overflow-hidden">{children}</main>;
+  return <main className="mx-auto h-screen w-full max-w-[1024px] overflow-hidden bg-gradient-to-b from-background to-muted">{children}</main>;
 }
