@@ -19,6 +19,8 @@ Rules:
 - Description: brief factual description (role, significance, key facts) — 1-3 sentences. Do NOT include URLs.
 - Location: most relevant location (birthplace for birthday calendars, place of death for death calendars, event site for historical events). Can be null if not applicable.
 - sourceUrl: most relevant Wikipedia article URL (prefer the Wikipedia in the output language). If no Wikipedia article exists, use another authoritative source.
+- Date: determine the correct historical date for this subject in YYYY-MM-DD format. For BC dates, use negative years (e.g., "-0479-08-11").
+- Recurrence: suggest "YEARLY" for birthdays, death anniversaries, and annual holidays/commemorations. "NONE" for one-time historical events.
 - photoUrl: direct URL to a portrait or relevant image (Wikimedia Commons preferred). Return null if not found. Must point to an actual image file.
 - Output ONLY valid JSON matching the required schema. No explanations.`;
 
@@ -115,6 +117,14 @@ export async function POST(
               description: "Most relevant location. Empty string if not applicable.",
               nullable: true,
             },
+            date: {
+              type: Type.STRING,
+              description: "Historical date in YYYY-MM-DD format",
+            },
+            recurrence: {
+              type: Type.STRING,
+              description: "NONE, DAILY, WEEKLY, MONTHLY, or YEARLY",
+            },
             sourceUrl: {
               type: Type.STRING,
               description: "Wikipedia article URL or other authoritative source URL",
@@ -125,7 +135,7 @@ export async function POST(
               nullable: true,
             },
           },
-          required: ["summary", "description", "sourceUrl"],
+          required: ["summary", "description", "date", "recurrence", "sourceUrl"],
         },
       },
     });
@@ -147,6 +157,8 @@ export async function POST(
       summary: string;
       description: string;
       location?: string | null;
+      date: string;
+      recurrence: string;
       sourceUrl: string;
       photoUrl?: string | null;
     };
@@ -158,6 +170,12 @@ export async function POST(
       throw new Error("Gemini returned invalid JSON");
     }
 
+    // Normalize recurrence
+    const validRecurrences = ["NONE", "DAILY", "WEEKLY", "MONTHLY", "YEARLY"];
+    if (!validRecurrences.includes(result.recurrence)) {
+      result.recurrence = "NONE";
+    }
+
     console.log(`[AI Enrich] ── Done ────────────────────────────────────\n`);
 
     return NextResponse.json({
@@ -166,6 +184,8 @@ export async function POST(
         summary: result.summary,
         description: result.description,
         location: result.location || null,
+        date: result.date,
+        recurrence: result.recurrence,
         sourceUrl: result.sourceUrl,
         photoUrl: result.photoUrl || null,
       },

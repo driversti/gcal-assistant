@@ -22,11 +22,14 @@ import { Loader2, ChevronDown, ChevronUp, Sparkles } from "lucide-react";
 import type { CalendarEvent } from "@/lib/types/event";
 
 type DialogState = "idle" | "enriching" | "review" | "saving";
+type Recurrence = "NONE" | "DAILY" | "WEEKLY" | "MONTHLY" | "YEARLY";
 
 interface Enrichment {
   summary: string;
   description: string;
   location: string;
+  date: string;
+  recurrence: Recurrence;
   sourceUrl: string;
   photoUrl: string;
 }
@@ -76,6 +79,8 @@ export function AskAiDialog({
   const [summary, setSummary] = useState("");
   const [description, setDescription] = useState("");
   const [location, setLocation] = useState("");
+  const [date, setDate] = useState("");
+  const [recurrence, setRecurrence] = useState<Recurrence>("NONE");
   const [sourceUrl, setSourceUrl] = useState("");
   const [photoUrl, setPhotoUrl] = useState("");
 
@@ -134,6 +139,8 @@ export function AskAiDialog({
     setSummary("");
     setDescription("");
     setLocation("");
+    setDate("");
+    setRecurrence("NONE");
     setSourceUrl("");
     setPhotoUrl("");
     setFeedback("");
@@ -168,6 +175,8 @@ export function AskAiDialog({
       setSummary(enrichment.summary);
       setDescription(enrichment.description);
       setLocation(enrichment.location || "");
+      setDate(enrichment.date);
+      setRecurrence(enrichment.recurrence);
       setSourceUrl(enrichment.sourceUrl);
       setPhotoUrl(enrichment.photoUrl || "");
       setFeedback("");
@@ -291,6 +300,40 @@ export function AskAiDialog({
                   onChange={(e) => setSummary(e.target.value)}
                   disabled={isBusy}
                 />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium">Date</label>
+                  <Input
+                    type="date"
+                    value={date}
+                    onChange={(e) => setDate(e.target.value)}
+                    disabled={isBusy}
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium">Recurrence</label>
+                  <Select
+                    value={recurrence}
+                    onValueChange={(val) =>
+                      val && setRecurrence(val as Recurrence)
+                    }
+                    disabled={isBusy}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="NONE">None</SelectItem>
+                      <SelectItem value="DAILY">Daily</SelectItem>
+                      <SelectItem value="WEEKLY">Weekly</SelectItem>
+                      <SelectItem value="MONTHLY">Monthly</SelectItem>
+                      <SelectItem value="YEARLY">Yearly</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
 
               <div className="space-y-1.5">
