@@ -40,12 +40,20 @@ export async function POST(request: Request) {
       }
     }
   } else if (body.action === "move" && body.targetCalendarId) {
+    // Google API cannot move individual recurring instances — move the master event instead
+    const seen = new Set<string>();
     for (const event of body.events) {
+      const moveId = event.recurringEventId ?? event.id;
+      if (seen.has(moveId)) {
+        results.push({ id: event.id, success: true });
+        continue;
+      }
+      seen.add(moveId);
       try {
         await moveEvent(
           client,
           event.calendarId,
-          event.id,
+          moveId,
           body.targetCalendarId
         );
         results.push({ id: event.id, success: true });

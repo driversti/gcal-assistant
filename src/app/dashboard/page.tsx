@@ -148,7 +148,7 @@ export default function DashboardPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           action: "move",
-          events: [{ id: event.id, calendarId: event.calendarId }],
+          events: [{ id: event.id, calendarId: event.calendarId, recurringEventId: event.recurringEventId }],
           targetCalendarId,
         }),
       });
