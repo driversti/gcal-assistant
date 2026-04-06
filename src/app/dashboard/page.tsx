@@ -9,6 +9,7 @@ import { TimelineView } from "@/components/dashboard/timeline-view";
 import { EditPanel } from "@/components/dashboard/edit-panel";
 import { AiCreateFab } from "@/components/dashboard/ai-create-fab";
 import { AiCreateEventDialog } from "@/components/dashboard/ai-create-event-dialog";
+import { useSwipe } from "@/hooks/use-swipe";
 import { detectDuplicates } from "@/lib/duplicates";
 import type { CalendarEvent } from "@/lib/types/event";
 import type { EventUpdateFields, RecurrenceMode } from "@/lib/types/event-update";
@@ -174,6 +175,19 @@ export default function DashboardPage() {
 
   const isEditOpen = !!editingEvent;
 
+  const swipe = useSwipe<HTMLDivElement>({
+    onSwipeLeft: () => {
+      const next = new Date(date);
+      next.setDate(next.getDate() + 1);
+      handleDateChange(next);
+    },
+    onSwipeRight: () => {
+      const prev = new Date(date);
+      prev.setDate(prev.getDate() - 1);
+      handleDateChange(prev);
+    },
+  });
+
   return (
     <div className="relative flex h-full flex-col">
       <TopBar
@@ -190,7 +204,12 @@ export default function DashboardPage() {
       />
 
       <div className="flex flex-1 overflow-hidden">
-        <div className={`flex-1 overflow-auto p-4 ${isEditOpen ? "sm:mr-0" : ""}`}>
+        <div
+          ref={swipe.ref}
+          onTouchStart={swipe.onTouchStart}
+          onTouchEnd={swipe.onTouchEnd}
+          className={`flex-1 overflow-auto p-4 ${isEditOpen ? "sm:mr-0" : ""}`}
+        >
           <TimelineView
             events={events}
             calendars={calendars}
