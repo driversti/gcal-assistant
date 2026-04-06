@@ -21,6 +21,8 @@ import { Input } from "@/components/ui/input";
 import { Loader2, ChevronDown, ChevronUp, Sparkles } from "lucide-react";
 import { PhotoCarousel } from "./photo-carousel";
 import type { CalendarInfo } from "@/lib/types/calendar";
+import { ALL_DAY_REMINDER_PRESETS } from "@/lib/types/event";
+import type { ReminderValue } from "@/lib/types/event";
 
 type DialogState = "idle" | "generating" | "review" | "creating";
 type Recurrence = "NONE" | "DAILY" | "WEEKLY" | "MONTHLY" | "YEARLY";
@@ -89,6 +91,7 @@ export function AiCreateEventDialog({
   const [recurrence, setRecurrence] = useState<Recurrence>("YEARLY");
   const [sourceUrl, setSourceUrl] = useState("");
   const [photoUrl, setPhotoUrl] = useState("");
+  const [reminder, setReminder] = useState<ReminderValue>(900); // 9 AM on event day
 
   // Feedback
   const [feedback, setFeedback] = useState("");
@@ -156,6 +159,7 @@ export function AiCreateEventDialog({
     setRecurrence("YEARLY");
     setSourceUrl("");
     setPhotoUrl("");
+    setReminder(900);
     setFeedback("");
     setShowFeedback(false);
   }
@@ -236,6 +240,7 @@ export function AiCreateEventDialog({
           location: location.trim() || null,
           date,
           recurrence,
+          reminderMinutes: reminder === "default" ? undefined : reminder,
         }),
       });
 
@@ -403,6 +408,33 @@ export function AiCreateEventDialog({
                     </SelectContent>
                   </Select>
                 </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium">Reminder</label>
+                <Select
+                  value={String(reminder ?? "none")}
+                  onValueChange={(val) => {
+                    if (val === "default") setReminder("default");
+                    else if (val === "none") setReminder(null);
+                    else setReminder(Number(val));
+                  }}
+                  disabled={isBusy}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {ALL_DAY_REMINDER_PRESETS.map((preset) => (
+                      <SelectItem
+                        key={String(preset.value ?? "none")}
+                        value={String(preset.value ?? "none")}
+                      >
+                        {preset.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="space-y-1.5">

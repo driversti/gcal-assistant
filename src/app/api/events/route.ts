@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
   }
 
   const body = await request.json();
-  const { calendarId, summary, description, location, date, recurrence } = body;
+  const { calendarId, summary, description, location, date, recurrence, reminderMinutes } = body;
 
   if (!calendarId || !summary || !date) {
     return NextResponse.json(
@@ -53,6 +53,7 @@ export async function POST(request: NextRequest) {
       location: location || null,
       date,
       recurrence: recurrence || "YEARLY",
+      reminderMinutes: reminderMinutes !== undefined ? reminderMinutes : undefined,
     });
 
     return NextResponse.json({

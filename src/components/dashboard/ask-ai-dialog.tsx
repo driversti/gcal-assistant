@@ -211,6 +211,11 @@ export function AskAiDialog({
             summary: summary.trim(),
             description: fullDescription,
             location: location.trim() || null,
+            transparency: "transparent",
+            reminders: {
+              useDefault: false,
+              overrides: [{ method: "popup", minutes: 900 }],
+            },
           },
           recurrenceMode: event.recurringEventId ? "all" : "single",
           recurringEventId: event.recurringEventId ?? undefined,

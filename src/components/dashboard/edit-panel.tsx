@@ -14,6 +14,8 @@ import { ExternalLink, MapPin, Search, X } from "lucide-react";
 import { PhotoCarousel } from "./photo-carousel";
 import { RecurrenceDialog } from "./cells/recurrence-dialog";
 import type { CalendarEvent } from "@/lib/types/event";
+import type { ReminderValue } from "@/lib/types/event";
+import { ALL_DAY_REMINDER_PRESETS, TIMED_REMINDER_PRESETS } from "@/lib/types/event";
 import type { CalendarInfo } from "@/lib/types/calendar";
 import type { EventUpdateFields, RecurrenceMode } from "@/lib/types/event-update";
 import { format, parseISO, addDays, subDays } from "date-fns";
@@ -77,6 +79,7 @@ export function EditPanel({
   const [expanded, setExpanded] = useState(false);
   const [showPhotoSearch, setShowPhotoSearch] = useState(false);
   const [photoBroken, setPhotoBroken] = useState(false);
+  const [reminder, setReminder] = useState<ReminderValue>("default");
 
   useEffect(() => {
     if (event && open) {
@@ -87,6 +90,11 @@ export function EditPanel({
       setSummary(event.summary);
       setLocation(event.location ?? "");
       setDescription(event.description ?? "");
+      setReminder(
+        event.reminderUseDefault
+          ? "default"
+          : event.reminderMinutes ?? 900
+      );
       if (event.isAllDay) {
         setStartDate(event.start.split("T")[0]);
         // Google Calendar uses exclusive end dates for all-day events.
@@ -154,6 +162,24 @@ export function EditPanel({
       const origEnd = format(parseISO(event!.end), "yyyy-MM-dd'T'HH:mm");
       const newEnd = `${endDate}T${endTime}`;
       if (newEnd !== origEnd) fields.end = { dateTime: `${newEnd}:00` };
+    }
+
+    // Determine if reminder changed
+    const origReminder: ReminderValue = event!.reminderUseDefault
+      ? "default"
+      : event!.reminderMinutes ?? null;
+    if (reminder !== origReminder) {
+      if (reminder === "default") {
+        // "Calendar default" still uses the calendar's default reminders
+        fields.reminders = { useDefault: true };
+      } else if (reminder === null) {
+        fields.reminders = { useDefault: false, overrides: [] };
+      } else {
+        fields.reminders = {
+          useDefault: false,
+          overrides: [{ method: "popup", minutes: reminder }],
+        };
+      }
     }
 
     return fields;
@@ -345,6 +371,40 @@ export function EditPanel({
             />
           </div>
         )}
+      </div>
+
+      <div className="space-y-1">
+        <label className="text-sm font-medium">Reminder</label>
+        <Select
+          value={String(reminder ?? "none")}
+          onValueChange={(val) => {
+            if (val === "default") setReminder("default");
+            else if (val === "none") setReminder(null);
+            else setReminder(Number(val));
+          }}
+        >
+          <SelectTrigger className="w-full">
+            <SelectValue>
+              {(value: string) => {
+                const presets = event.isAllDay ? ALL_DAY_REMINDER_PRESETS : TIMED_REMINDER_PRESETS;
+                const preset = presets.find((p) => String(p.value ?? "none") === value);
+                return preset?.label ?? `${value} min before`;
+              }}
+            </SelectValue>
+          </SelectTrigger>
+          <SelectContent>
+            {(event.isAllDay ? ALL_DAY_REMINDER_PRESETS : TIMED_REMINDER_PRESETS).map(
+              (preset) => (
+                <SelectItem
+                  key={String(preset.value ?? "none")}
+                  value={String(preset.value ?? "none")}
+                >
+                  {preset.label}
+                </SelectItem>
+              )
+            )}
+          </SelectContent>
+        </Select>
       </div>
 
       <div className="space-y-1">

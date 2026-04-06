@@ -5,6 +5,11 @@ export interface EventUpdateFields {
   start?: { dateTime?: string; date?: string; timeZone?: string };
   end?: { dateTime?: string; date?: string; timeZone?: string };
   status?: string;
+  transparency?: string;
+  reminders?: {
+    useDefault: boolean;
+    overrides?: { method: string; minutes: number }[];
+  };
 }
 
 export type RecurrenceMode = "single" | "thisAndFollowing" | "all";

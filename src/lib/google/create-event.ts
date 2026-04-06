@@ -11,6 +11,7 @@ interface CreateEventParams {
   location?: string | null;
   date: string; // YYYY-MM-DD (historical date)
   recurrence: Recurrence;
+  reminderMinutes?: number | null; // null = no reminder, undefined = default (9 AM)
 }
 
 const RRULE_MAP: Record<Exclude<Recurrence, "NONE">, string> = {
@@ -20,34 +21,12 @@ const RRULE_MAP: Record<Exclude<Recurrence, "NONE">, string> = {
   YEARLY: "RRULE:FREQ=YEARLY",
 };
 
-// For all-day events, Google Calendar reminder minutes are relative to
-// the start of the event day (midnight). To notify at 9:00 AM on event day,
-// we need 0 minutes before the day start... but Google actually counts
-// minutes before the event start for all-day events differently:
-// For all-day events the "event time" is the start of the day,
-// so minutes=540 means 540 minutes BEFORE start = 9 hours before midnight
-// of the event day = 3 PM the day before. We actually want 9 AM on the day,
-// which is 15 hours before the END of the day. Google docs say for all-day
-// events, the reminder is relative to midnight of the event day.
-// So 0 minutes = midnight, negative not allowed.
-// Actually: for all-day events, reminders.overrides.minutes counts from
-// the START of the event (which is midnight). So -540 doesn't work.
-// The Google Calendar web UI allows "on the day of the event at 9am"
-// which translates to minutes = (24*60 - 9*60) = 900? No...
-// Actually Google stores it as minutes BEFORE the event.
-// For all-day event at midnight: 9am same day = -9 hours... not possible.
-// Let me just use what Google Calendar UI uses: for "day of event, 9am"
-// it stores minutes = 540 (which is 9 hours before the event start at midnight
-// of the NEXT day, i.e., 3pm day before). Actually no.
-//
-// After research: Google Calendar all-day events treat the start as the
-// beginning of the day. "On the day of the event" reminders use negative
-// offsets relative to midnight, but the API doesn't support negative minutes.
-// Instead, the Google Calendar UI translates "9 AM on event day" to
-// `minutes: 540` where the reference point is 11:59 PM (end of day).
-//
-// Simplest approach: use minutes=540 and verify behavior after creation.
-const REMINDER_MINUTES_9AM = 540;
+// For all-day events, Google Calendar reminder minutes count backwards from
+// the event's END date (midnight of the next day). Examples:
+//   minutes=900  → 15h before next-midnight → 9:00 AM on event day
+//   minutes=540  → 9h before next-midnight  → 3:00 PM day before (wrong!)
+//   minutes=2340 → 39h before next-midnight → 9:00 AM day before
+const DEFAULT_REMINDER_MINUTES = 900; // 9 AM on the day of the event
 
 /**
  * Create an all-day event in Google Calendar with optional recurrence
@@ -59,7 +38,7 @@ export async function createEvent(
 ): Promise<calendar_v3.Schema$Event> {
   const calendarApi = google.calendar({ version: "v3", auth });
 
-  const { calendarId, summary, description, location, date, recurrence } =
+  const { calendarId, summary, description, location, date, recurrence, reminderMinutes } =
     params;
 
   // Build the next-day date for the all-day event end
@@ -76,11 +55,15 @@ export async function createEvent(
   const requestBody: calendar_v3.Schema$Event = {
     summary,
     description,
+    transparency: "transparent", // Show as free
     start: { date },
     end: { date: endDateStr },
     reminders: {
       useDefault: false,
-      overrides: [{ method: "popup", minutes: REMINDER_MINUTES_9AM }],
+      overrides:
+        reminderMinutes === null
+          ? []
+          : [{ method: "popup", minutes: reminderMinutes ?? DEFAULT_REMINDER_MINUTES }],
     },
   };
 

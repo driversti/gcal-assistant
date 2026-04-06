@@ -21,8 +21,10 @@ function toGoogleEventBody(
   if (fields.location !== undefined)
     body.location = fields.location ?? undefined;
   if (fields.status !== undefined) body.status = fields.status;
+  if (fields.transparency !== undefined) body.transparency = fields.transparency;
   if (fields.start !== undefined) body.start = fields.start;
   if (fields.end !== undefined) body.end = fields.end;
+  if (fields.reminders !== undefined) body.reminders = fields.reminders;
 
   return body;
 }

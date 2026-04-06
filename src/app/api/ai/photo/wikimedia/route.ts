@@ -31,10 +31,23 @@ export async function POST(request: Request) {
       photos = await fetchFromWikipediaArticle(sourceUrl);
     }
 
-    // Strategy 2: Search Commons directly if we don't have enough
+    // Strategy 2: Search Wikipedia for articles matching the subject,
+    // then extract images from the found article. This works much better
+    // than Commons search for non-Latin scripts (Cyrillic, CJK, etc.)
+    if (photos.length < 6 && subject) {
+      const wikiPhotos = await searchWikipediaForImages(subject);
+      const existing = new Set(photos);
+      for (const url of wikiPhotos) {
+        if (!existing.has(url)) {
+          photos.push(url);
+          existing.add(url);
+        }
+      }
+    }
+
+    // Strategy 3: Search Commons directly if we still don't have enough
     if (photos.length < 6 && subject) {
       const commonsPhotos = await searchCommons(subject);
-      // Deduplicate
       const existing = new Set(photos);
       for (const url of commonsPhotos) {
         if (!existing.has(url)) {
@@ -117,6 +130,106 @@ async function fetchFromWikipediaArticle(url: string): Promise<string[]> {
 
   // Resolve file names to actual URLs via Wikimedia Commons API
   return resolveFileUrls(imageFiles.slice(0, 12));
+}
+
+/**
+ * Detect the best Wikipedia language edition for a given text.
+ * Returns language codes to try, with the detected language first.
+ */
+function detectWikiLanguages(text: string): string[] {
+  const langs: string[] = [];
+
+  // Check for Cyrillic characters (Ukrainian, Russian, etc.)
+  if (/[\u0400-\u04FF]/.test(text)) {
+    // Ukrainian-specific characters: ґ, є, і, ї
+    if (/[ґєіїҐЄІЇ]/.test(text)) {
+      langs.push("uk", "ru");
+    } else {
+      langs.push("ru", "uk");
+    }
+  }
+
+  // Always include English as fallback
+  langs.push("en");
+  return langs;
+}
+
+/**
+ * Search Wikipedia for articles matching the subject, then extract images.
+ * Works well for non-Latin scripts where Commons search fails.
+ */
+async function searchWikipediaForImages(subject: string): Promise<string[]> {
+  const langs = detectWikiLanguages(subject);
+
+  for (const lang of langs) {
+    // Search Wikipedia for the subject
+    const searchUrl = `https://${lang}.wikipedia.org/w/api.php?` +
+      new URLSearchParams({
+        action: "query",
+        list: "search",
+        srsearch: subject,
+        srlimit: "1",
+        format: "json",
+        origin: "*",
+      });
+
+    const searchRes = await fetch(searchUrl);
+    if (!searchRes.ok) continue;
+
+    const searchData = await searchRes.json();
+    const results = searchData.query?.search;
+    if (!results || results.length === 0) continue;
+
+    const articleTitle = results[0].title;
+
+    // Now fetch images from this article (reusing the same logic as fetchFromWikipediaArticle)
+    const imagesUrl = `https://${lang}.wikipedia.org/w/api.php?` +
+      new URLSearchParams({
+        action: "query",
+        titles: articleTitle,
+        prop: "images",
+        imlimit: "50",
+        format: "json",
+        origin: "*",
+      });
+
+    const imagesRes = await fetch(imagesUrl);
+    if (!imagesRes.ok) continue;
+
+    const imagesData = await imagesRes.json();
+    const pages = imagesData.query?.pages;
+    if (!pages) continue;
+
+    const page = Object.values(pages)[0] as { images?: { title: string }[] };
+    const imageFiles = (page.images || [])
+      .map((img) => img.title)
+      .filter((title) => /\.(jpg|jpeg|png)$/i.test(title))
+      .filter((title) => {
+        const lower = title.toLowerCase();
+        return (
+          !lower.includes("icon") &&
+          !lower.includes("logo") &&
+          !lower.includes("flag") &&
+          !lower.includes("commons-logo") &&
+          !lower.includes("wiki") &&
+          !lower.includes("stub") &&
+          !lower.includes("edit-clear") &&
+          !lower.includes("question_book") &&
+          !lower.includes("disambig") &&
+          !lower.includes("p_") &&
+          !lower.includes("crystal_clear") &&
+          !lower.includes("ambox") &&
+          !lower.includes("gnome-") &&
+          !lower.includes("nuvola")
+        );
+      });
+
+    if (imageFiles.length > 0) {
+      return resolveFileUrls(imageFiles.slice(0, 12));
+    }
+  }
+
+  return [];
 }
 
 /**

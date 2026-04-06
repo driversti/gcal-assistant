@@ -29,6 +29,9 @@ export async function searchEvents(
 
       return (data.items ?? []).map((item): CalendarEvent => {
         const isAllDay = !!item.start?.date;
+        const popupOverride = item.reminders?.overrides?.find(
+          (o) => o.method === "popup"
+        );
         return {
           id: item.id!,
           calendarId: cal.id,
@@ -45,6 +48,8 @@ export async function searchEvents(
           created: item.created ?? "",
           updated: item.updated ?? "",
           recurringEventId: item.recurringEventId ?? undefined,
+          reminderUseDefault: item.reminders?.useDefault ?? true,
+          reminderMinutes: popupOverride?.minutes ?? null,
         };
       });
     })
