@@ -59,7 +59,7 @@ export async function PATCH(
     }
 
     // Only allow known fields through
-    const allowedKeys = ["summary", "description", "location", "start", "end", "status"];
+    const allowedKeys = ["summary", "description", "location", "start", "end", "status", "transparency", "reminders"];
     const sanitizedFields: Record<string, unknown> = {};
     for (const key of allowedKeys) {
       if (key in body.fields) {
