@@ -32,7 +32,7 @@ function toGoogleEventBody(
  *
  * recurrenceMode controls how recurring events are handled:
  * - "single" (default): patch just this instance
- * - "all": patch the series master (uses recurringEventId)
+ * - "all": full PUT on the series master + patch the specific instance
  * - "thisAndFollowing": not natively supported by Google — we patch
  *   this instance and all following instances individually
  */
@@ -57,11 +57,29 @@ export async function updateEvent(
   }
 
   if (recurrenceMode === "all") {
-    await calendarApi.events.patch({
+    // Full PUT on the master event so ALL instances (including already-materialised
+    // ones) inherit the changes. A simple patch on the master only updates the
+    // template for future instances.
+    const { data: masterEvent } = await calendarApi.events.get({
       calendarId,
       eventId: recurringEventId,
-      requestBody: body,
     });
+
+    await calendarApi.events.update({
+      calendarId,
+      eventId: recurringEventId,
+      requestBody: { ...masterEvent, ...body },
+    });
+
+    // Materialized instances keep their own identity — patch the specific
+    // instance so the user sees the change immediately.
+    if (eventId !== recurringEventId) {
+      await calendarApi.events.patch({
+        calendarId,
+        eventId,
+        requestBody: body,
+      });
+    }
     return;
   }
 
