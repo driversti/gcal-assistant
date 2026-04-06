@@ -22,6 +22,8 @@ export function useSwipe<T extends HTMLElement>({
   const startY = useRef(0);
 
   const onTouchStart = useCallback((e: React.TouchEvent) => {
+    // Ignore touches from portals (e.g. dialogs) that bubble through React tree
+    if (ref.current && !ref.current.contains(e.target as Node)) return;
     startX.current = e.touches[0].clientX;
     startY.current = e.touches[0].clientY;
   }, []);
@@ -29,6 +31,8 @@ export function useSwipe<T extends HTMLElement>({
   const onTouchEnd = useCallback(
     (e: React.TouchEvent) => {
       if (!enabled) return;
+      // Ignore touches from portals (e.g. dialogs) that bubble through React tree
+      if (ref.current && !ref.current.contains(e.target as Node)) return;
 
       const dx = e.changedTouches[0].clientX - startX.current;
       const dy = e.changedTouches[0].clientY - startY.current;
