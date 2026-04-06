@@ -170,7 +170,12 @@ export async function POST(
       throw new Error("Gemini returned invalid JSON");
     }
 
-    // Normalize recurrence
+    // Normalize and fill defaults for fields Gemini may have omitted
+    if (!result.summary) result.summary = event.summary ?? "";
+    if (!result.description) result.description = "";
+    if (!result.date) result.date = "";
+    if (!result.sourceUrl) result.sourceUrl = "";
+
     const validRecurrences = ["NONE", "DAILY", "WEEKLY", "MONTHLY", "YEARLY"];
     if (!validRecurrences.includes(result.recurrence)) {
       result.recurrence = "NONE";
