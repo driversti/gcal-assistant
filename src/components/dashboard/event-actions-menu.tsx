@@ -62,7 +62,7 @@ export function EventActionsMenu({
           </DropdownMenuItem>
           <DropdownMenuItem onClick={() => setAskAiOpen(true)}>
             <Sparkles className="mr-2 h-4 w-4" />
-            Ask AI
+            Enrich with AI
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem variant="destructive" onClick={handleDeleteClick}>
