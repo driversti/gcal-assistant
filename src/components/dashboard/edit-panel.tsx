@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ExternalLink, X } from "lucide-react";
@@ -54,7 +54,6 @@ export function EditPanel({
   const [summary, setSummary] = useState("");
   const [location, setLocation] = useState("");
   const [description, setDescription] = useState("");
-  const [status, setStatus] = useState("");
   const [startDate, setStartDate] = useState("");
   const [startTime, setStartTime] = useState("");
   const [endDate, setEndDate] = useState("");
@@ -65,14 +64,26 @@ export function EditPanel({
   const [pendingAction, setPendingAction] = useState<"save" | "delete" | null>(null);
   const [pendingFields, setPendingFields] = useState<EventUpdateFields | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [expanded, setExpanded] = useState(false);
+  const handleStartY = useRef(0);
+
+  const onHandleTouchStart = useCallback((e: React.TouchEvent) => {
+    handleStartY.current = e.touches[0].clientY;
+  }, []);
+
+  const onHandleTouchEnd = useCallback((e: React.TouchEvent) => {
+    const dy = e.changedTouches[0].clientY - handleStartY.current;
+    if (dy < -30) setExpanded(true);
+    if (dy > 30) setExpanded(false);
+  }, []);
 
   useEffect(() => {
     if (event && open) {
       setError(null);
+      setExpanded(false);
       setSummary(event.summary);
       setLocation(event.location ?? "");
       setDescription(event.description ?? "");
-      setStatus(event.status);
       if (event.isAllDay) {
         setStartDate(event.start.split("T")[0]);
         // Google Calendar uses exclusive end dates for all-day events.
@@ -106,7 +117,7 @@ export function EditPanel({
       fields.location = location || null;
     if (description !== (event!.description ?? ""))
       fields.description = description || null;
-    if (status !== event!.status) fields.status = status;
+
 
     if (event!.isAllDay) {
       if (startDate !== event!.start.split("T")[0])
@@ -190,7 +201,7 @@ export function EditPanel({
   }
 
   const formContent = (
-    <div className="flex flex-col gap-4 overflow-auto p-4">
+    <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-auto p-4">
       <div className="flex items-start gap-3">
         <div className="flex-1 space-y-2">
           {calendarInfo && (
@@ -280,44 +291,31 @@ export function EditPanel({
         />
       </div>
 
-      <div className="space-y-1">
+      <div className={`space-y-1 ${expanded ? "flex flex-1 flex-col" : ""}`}>
         <label className="text-sm font-medium">Description</label>
         <textarea
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           placeholder="Add description"
-          rows={4}
-          className="w-full rounded-md border bg-transparent px-3 py-2 text-sm"
+          rows={expanded ? undefined : 4}
+          className={`w-full rounded-md border bg-transparent px-3 py-2 text-sm ${expanded ? "flex-1 resize-none" : ""}`}
         />
-      </div>
-
-      <div className="space-y-1">
-        <label className="text-sm font-medium">Status</label>
-        <select
-          value={status}
-          onChange={(e) => setStatus(e.target.value)}
-          className="w-full rounded-md border bg-transparent px-3 py-2 text-sm"
-        >
-          <option value="confirmed">Confirmed</option>
-          <option value="tentative">Tentative</option>
-          <option value="cancelled">Cancelled</option>
-        </select>
       </div>
 
       {error && (
         <p className="text-sm font-medium text-destructive">{error}</p>
       )}
 
-      <div className="flex flex-col gap-2 pt-2">
+      <div className="grid grid-cols-2 gap-2 pt-2">
         <Button onClick={() => handleSave()} disabled={saving}>
-          {saving ? "Saving..." : "Save Changes"}
+          {saving ? "Saving..." : "Save"}
         </Button>
         <Button
           variant="destructive"
           onClick={() => handleDelete()}
           disabled={deleting}
         >
-          {deleting ? "Deleting..." : "Delete Event"}
+          {deleting ? "Deleting..." : "Delete"}
         </Button>
       </div>
     </div>
@@ -332,9 +330,13 @@ export function EditPanel({
       />
 
       {/* Panel container */}
-      <div className="fixed inset-x-0 bottom-0 z-50 max-h-[70vh] rounded-t-2xl border-t bg-background shadow-2xl sm:static sm:inset-auto sm:z-auto sm:max-h-none sm:w-[400px] sm:shrink-0 sm:rounded-none sm:rounded-l-lg sm:border-l sm:border-t-0 sm:shadow-none">
+      <div className={`fixed inset-x-0 bottom-0 z-50 flex flex-col rounded-t-2xl border-t bg-background shadow-2xl transition-[max-height] duration-300 sm:static sm:inset-auto sm:z-auto sm:max-h-none sm:w-[400px] sm:shrink-0 sm:rounded-none sm:rounded-l-lg sm:border-l sm:border-t-0 sm:shadow-none ${expanded ? "max-h-[100vh]" : "max-h-[70vh]"}`}>
         {/* Header */}
-        <div className="flex items-center justify-between border-b px-4 py-3">
+        <div
+          className="flex items-center justify-between border-b px-4 py-3"
+          onTouchStart={onHandleTouchStart}
+          onTouchEnd={onHandleTouchEnd}
+        >
           <div className="absolute left-1/2 top-2 h-1 w-8 -translate-x-1/2 rounded-full bg-muted-foreground/30 sm:hidden" />
           <h2 className="text-base font-bold">Edit Event</h2>
           <Button variant="ghost" size="icon" onClick={onClose}>
