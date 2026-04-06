@@ -1,26 +1,26 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { getAuthClient } from "@/lib/auth/get-auth-client";
-import { updateEvent } from "@/lib/google/update-event";
 import { google } from "googleapis";
 import { GoogleGenAI, Type } from "@google/genai";
 
-// Truncate overly long text to avoid hitting model output token limits.
-// We cap the description at ~4000 chars so the translated output fits within limits.
-const MAX_DESCRIPTION_CHARS = 4000;
+const SYSTEM_INSTRUCTION = `You are a calendar event research assistant. Given an existing calendar event and its calendar type, research the subject and return enriched event data.
 
-const SYSTEM_INSTRUCTION = `You are a multilingual assistant specialized in translating and localizing Google Calendar events.
-
-Your task is to translate the provided calendar event fields (title, location, description) into the requested target language.
-
-Rules you must follow:
-- Translate ALL provided fields into the target language. Never skip a field that has content.
-- If a field is not present in the input, return an empty string for it in the JSON output.
-- Output ONLY the translated text. Do NOT include any explanations, alternatives, notes, commentary, caveats, or reasoning — ever.
-- Do not add phrases like "Note:", "Translation:", "Alternatively:", or parenthetical remarks.
-- Preserve the meaning, tone, and intent of the original text. Do not add, remove, or invent information.
-- Produce natural, fluent language appropriate for a calendar event — not a literal word-for-word translation.
-- For the description: preserve its structure (line breaks, lists, URLs) as much as possible, only translating the human-readable text portions.
-- Your output must always be valid JSON matching the required schema exactly. Nothing else.`;
+Rules:
+- Summary format: ALWAYS "YEAR — Name (d./b. YYYY)" for people, "YEAR — Event Name" for events.
+- For people on birthday calendars: include death year, e.g. "1814 — Тарас Шевченко (п. 1861)".
+- For people on death calendars: include birth year, e.g. "1861 — Тарас Шевченко (н. 1814)".
+- For non-person events: just year and name, e.g. "1986 — Chernobyl disaster".
+- Use "d." / "b." for English, "п." / "н." for Ukrainian, "ум." / "р." for Russian, etc. — use the abbreviation natural for the output language.
+- Language rules (STRICT):
+  - Ukraine-related subjects → Ukrainian
+  - Poland-related subjects → Polish
+  - Russia-related subjects → Russian
+  - All other subjects → English
+- Description: brief factual description (role, significance, key facts) — 1-3 sentences. Do NOT include URLs.
+- Location: most relevant location (birthplace for birthday calendars, place of death for death calendars, event site for historical events). Can be null if not applicable.
+- sourceUrl: most relevant Wikipedia article URL (prefer the Wikipedia in the output language). If no Wikipedia article exists, use another authoritative source.
+- photoUrl: direct URL to a portrait or relevant image (Wikimedia Commons preferred). Return null if not found. Must point to an actual image file.
+- Output ONLY valid JSON matching the required schema. No explanations.`;
 
 export async function POST(
   request: NextRequest,
@@ -34,10 +34,10 @@ export async function POST(
   const { eventId } = await params;
   const body = await request.json();
 
-  const { calendarId, targetLanguage, modelName = "gemini-3.1-flash-lite-preview" } = body;
-  if (!calendarId || !targetLanguage) {
+  const { calendarId, modelName = "gemini-2.5-flash", feedback } = body;
+  if (!calendarId) {
     return NextResponse.json(
-      { error: "Missing calendarId or targetLanguage" },
+      { error: "Missing calendarId" },
       { status: 400 }
     );
   }
@@ -57,33 +57,39 @@ export async function POST(
       eventId,
     });
 
-    const hasTitle = !!event.summary;
-    const hasDescription = !!event.description;
-    const hasLocation = !!event.location;
+    // 2. Resolve calendar name
+    const { data: calendarMeta } = await calendarApi.calendars.get({
+      calendarId,
+    });
+    const calendarName = calendarMeta.summary ?? "Unknown";
 
-    // Truncate description if extremely long to avoid output token limit issues
-    const descriptionText = event.description
-      ? event.description.length > MAX_DESCRIPTION_CHARS
-        ? event.description.slice(0, MAX_DESCRIPTION_CHARS) + "\n... [truncated for translation]"
-        : event.description
-      : "";
+    // 3. Build the user prompt
+    let prompt = `Existing event summary: "${event.summary ?? "(no title)"}"\n`;
+    prompt += `Calendar type: "${calendarName}"\n`;
 
-    // 2. Prepare the user prompt with the raw event data
-    let prompt = `Please translate the following calendar event into: "${targetLanguage}".\n\n`;
-    if (hasTitle) prompt += `Title: ${event.summary}\n`;
-    if (hasLocation) prompt += `Location: ${event.location}\n`;
-    if (hasDescription) prompt += `Description:\n${descriptionText}\n`;
+    if (event.description) {
+      prompt += `Current description: "${event.description}"\n`;
+    }
+    if (event.location) {
+      prompt += `Current location: "${event.location}"\n`;
+    }
 
-    // 3. Call Gemini API
+    if (feedback) {
+      prompt += `\nThe user has reviewed the previous AI enrichment and wants corrections.\n`;
+      prompt += `User feedback: "${feedback}"\n`;
+      prompt += `\nPlease regenerate ALL fields taking the user's feedback into account.\n`;
+    }
+
+    prompt += `\nResearch this subject and return enriched event data as JSON.`;
+
+    console.log(`\n[AI Enrich] ── Request ─────────────────────────────────`);
+    console.log(`[AI Enrich] Model:    ${modelName}`);
+    console.log(`[AI Enrich] Event:    ${event.summary ?? "(no title)"} (${eventId})`);
+    console.log(`[AI Enrich] Calendar: ${calendarName}`);
+    console.log(`[AI Enrich] Feedback: ${feedback ?? "(none)"}`);
+
+    // 4. Call Gemini with Google Search grounding
     const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-
-    console.log(`\n[AI Route] ── Request ──────────────────────────────────`);
-    console.log(`[AI Route] Model:    ${modelName}`);
-    console.log(`[AI Route] Language: ${targetLanguage}`);
-    console.log(`[AI Route] Event:    ${event.summary ?? "(no title)"} (${eventId})`);
-    console.log(`[AI Route] System instruction:\n${SYSTEM_INSTRUCTION.split("\n").map(l => "  " + l).join("\n")}`);
-    console.log(`[AI Route] User prompt:\n${prompt.split("\n").map(l => "  " + l).join("\n")}`);
-    console.log(`[AI Route] Prompt length: ${prompt.length} chars`);
 
     const response = await ai.models.generateContent({
       model: modelName,
@@ -91,117 +97,83 @@ export async function POST(
       config: {
         systemInstruction: SYSTEM_INSTRUCTION,
         responseMimeType: "application/json",
-        // Set explicit output token limit to prevent truncation
         maxOutputTokens: 2048,
+        tools: [{ googleSearch: {} }],
         responseSchema: {
           type: Type.OBJECT,
           properties: {
-            summary: { type: Type.STRING, description: "The translated title (if provided), or empty string." },
-            location: { type: Type.STRING, description: "The translated location (if provided), or empty string." },
-            description: { type: Type.STRING, description: "The translated description (if provided), or empty string." },
+            summary: {
+              type: Type.STRING,
+              description: "Event title formatted as 'YEAR — Name (dates)' or 'YEAR — Event Name'",
+            },
+            description: {
+              type: Type.STRING,
+              description: "Brief factual description (1-3 sentences). No URLs.",
+            },
+            location: {
+              type: Type.STRING,
+              description: "Most relevant location. Empty string if not applicable.",
+              nullable: true,
+            },
+            sourceUrl: {
+              type: Type.STRING,
+              description: "Wikipedia article URL or other authoritative source URL",
+            },
+            photoUrl: {
+              type: Type.STRING,
+              description: "Direct URL to a portrait or relevant image. Empty string if not found.",
+              nullable: true,
+            },
           },
+          required: ["summary", "description", "sourceUrl"],
         },
       },
     });
 
-    const finishReason = response.candidates?.[0]?.finishReason;
-    console.log(`[AI Route] ── Response ─────────────────────────────────`);
-    console.log(`[AI Route] Finish reason: ${finishReason}`);
-    console.log(`[AI Route] Response length: ${response.text?.length ?? 0} chars`);
-    console.log(`[AI Route] Raw response: ${response.text}`);
-
     const resultText = response.text;
+    const finishReason = response.candidates?.[0]?.finishReason;
+
+    console.log(`[AI Enrich] ── Response ────────────────────────────────`);
+    console.log(`[AI Enrich] Finish reason: ${finishReason}`);
+    console.log(`[AI Enrich] Raw response: ${resultText}`);
 
     if (!resultText) {
-      throw new Error(`Gemini returned no content. Finish reason: ${finishReason ?? "unknown"}`);
+      throw new Error(
+        `Gemini returned no content. Finish reason: ${finishReason ?? "unknown"}`
+      );
     }
 
-    let result: { summary?: string; location?: string; description?: string };
+    let result: {
+      summary: string;
+      description: string;
+      location?: string | null;
+      sourceUrl: string;
+      photoUrl?: string | null;
+    };
+
     try {
       result = JSON.parse(resultText);
     } catch {
-      console.error("[AI Route] Failed to parse Gemini JSON:", resultText?.slice(0, 500));
-      throw new Error("Gemini returned invalid JSON. The event description may be too long to translate.");
+      console.error("[AI Enrich] Failed to parse Gemini JSON:", resultText?.slice(0, 500));
+      throw new Error("Gemini returned invalid JSON");
     }
 
-    // 4. Update the event
-    const updates: Record<string, string> = {};
-    if (hasTitle && result.summary) updates.summary = result.summary;
-    if (hasLocation && result.location) updates.location = result.location;
-    if (hasDescription && result.description) updates.description = result.description;
-
-    const isRecurring = !!event.recurringEventId;
-    console.log(`[AI Route] Fields to update: ${JSON.stringify(Object.keys(updates))}`);
-    console.log(`[AI Route] Recurring: ${isRecurring}${isRecurring ? ` (series: ${event.recurringEventId})` : ""}`);
-
-    if (Object.keys(updates).length > 0) {
-      if (isRecurring) {
-        // The only way to update ALL occurrences (including far-future unmaterialized
-        // instances like 2027+) is to do a full PUT (events.update) on the master event.
-        // events.patch on the master only affects the template for new instances.
-        // events.instances only returns materialised instances within a limited window.
-        const masterId = event.recurringEventId!;
-
-        console.log(`[AI Route] Fetching master event: ${masterId}`);
-        const { data: masterEvent } = await calendarApi.events.get({
-          calendarId,
-          eventId: masterId,
-        });
-
-        // Merge the translation into the full master event resource
-        const updatedMaster = {
-          ...masterEvent,
-          ...updates,
-        };
-
-        console.log(`[AI Route] Full PUT on master event: ${masterId}`);
-        await calendarApi.events.update({
-          calendarId,
-          eventId: masterId,
-          requestBody: updatedMaster,
-        });
-
-        // Also directly patch the specific instance that was requested.
-        // Existing materialized instances keep their own identity and don't
-        // automatically inherit master changes, so we must patch them explicitly.
-        if (eventId !== masterId) {
-          console.log(`[AI Route] Patching specific instance: ${eventId}`);
-          await calendarApi.events.patch({
-            calendarId,
-            eventId,
-            requestBody: updates,
-          });
-        }
-
-        console.log(`[AI Route] Master updated + instance patched`);
-      } else {
-        await updateEvent(client, calendarId, eventId, updates, "single");
-      }
-    }
-
-    console.log(`[AI Route] ── Done ─────────────────────────────────────\n`);
-
+    console.log(`[AI Enrich] ── Done ────────────────────────────────────\n`);
 
     return NextResponse.json({
       success: true,
-      model: modelName,
-      language: targetLanguage,
-      updatedFields: Object.keys(updates),
-      debug: {
-        eventId,
-        isRecurring,
-        masterId: event.recurringEventId ?? null,
-        masterSummaryBeforeUpdate: isRecurring ? "(check logs)" : null,
-      },
-      result: {
-        summary: result.summary ?? null,
-        location: result.location ?? null,
-        description: result.description ?? null,
+      enrichment: {
+        summary: result.summary,
+        description: result.description,
+        location: result.location || null,
+        sourceUrl: result.sourceUrl,
+        photoUrl: result.photoUrl || null,
       },
     });
   } catch (err: unknown) {
-    console.error("[AI Route] Error:", err);
-    const message = err instanceof Error ? err.message : "Failed to process AI translation";
+    console.error("[AI Enrich] Error:", err);
+    const message =
+      err instanceof Error ? err.message : "Failed to enrich event";
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
