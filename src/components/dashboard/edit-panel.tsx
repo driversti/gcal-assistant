@@ -261,9 +261,9 @@ export function EditPanel({
               href={sourceUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-1.5 text-sm text-primary hover:underline"
+              className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground hover:underline"
             >
-              <ExternalLink className="h-3.5 w-3.5 shrink-0" />
+              <ExternalLink className="h-3 w-3 shrink-0" />
               {sourceUrl.includes("wikipedia.org") ? "Wikipedia" : "Source"}
             </a>
           )}
@@ -282,10 +282,11 @@ export function EditPanel({
           <button
             type="button"
             onClick={() => setShowPhotoSearch(!showPhotoSearch)}
-            className="flex h-20 w-20 items-center justify-center rounded-lg border border-dashed text-muted-foreground hover:border-primary hover:text-primary"
+            className="flex h-20 w-20 flex-col items-center justify-center gap-1 rounded-lg border border-dashed text-muted-foreground hover:border-primary hover:text-primary"
             title="Find an image"
           >
             <Search className="h-5 w-5" />
+            <span className="text-[10px] leading-tight">Find photo</span>
           </button>
         )}
       </div>

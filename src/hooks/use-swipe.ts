@@ -4,12 +4,14 @@ interface UseSwipeOptions {
   onSwipeLeft?: () => void;
   onSwipeRight?: () => void;
   threshold?: number;
+  enabled?: boolean;
 }
 
 export function useSwipe<T extends HTMLElement>({
   onSwipeLeft,
   onSwipeRight,
   threshold = 50,
+  enabled = true,
 }: UseSwipeOptions): {
   ref: RefObject<T | null>;
   onTouchStart: (e: React.TouchEvent) => void;
@@ -26,6 +28,8 @@ export function useSwipe<T extends HTMLElement>({
 
   const onTouchEnd = useCallback(
     (e: React.TouchEvent) => {
+      if (!enabled) return;
+
       const dx = e.changedTouches[0].clientX - startX.current;
       const dy = e.changedTouches[0].clientY - startY.current;
 
@@ -38,7 +42,7 @@ export function useSwipe<T extends HTMLElement>({
         onSwipeLeft?.();
       }
     },
-    [onSwipeLeft, onSwipeRight, threshold]
+    [onSwipeLeft, onSwipeRight, threshold, enabled]
   );
 
   return { ref, onTouchStart, onTouchEnd };

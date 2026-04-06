@@ -186,6 +186,7 @@ export default function DashboardPage() {
       prev.setDate(prev.getDate() - 1);
       handleDateChange(prev);
     },
+    enabled: !isEditOpen,
   });
 
   return (
