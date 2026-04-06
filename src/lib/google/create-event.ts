@@ -22,15 +22,16 @@ const RRULE_MAP: Record<Exclude<Recurrence, "NONE">, string> = {
 };
 
 // For all-day events, Google Calendar reminder minutes count backwards from
-// the event's END date (midnight of the next day). Examples:
-//   minutes=900  → 15h before next-midnight → 9:00 AM on event day
-//   minutes=540  → 9h before next-midnight  → 3:00 PM day before (wrong!)
-//   minutes=2340 → 39h before next-midnight → 9:00 AM day before
-const DEFAULT_REMINDER_MINUTES = 900; // 9 AM on the day of the event
+// midnight at the START of the event day. Examples:
+//   minutes=0    → midnight on event day
+//   minutes=900  → 15h before midnight → 9:00 AM day BEFORE
+//   minutes=2340 → 39h before midnight → 9:00 AM 2 days before
+// NOTE: "On the day at 9 AM" is NOT possible with per-event overrides —
+// it requires calendar-level default notifications (useDefault: true).
 
 /**
- * Create an all-day event in Google Calendar with optional recurrence
- * and a 9 AM popup reminder.
+ * Create an all-day event in Google Calendar with optional recurrence.
+ * Uses calendar default reminders by default (typically "on the day at 9 AM").
  */
 export async function createEvent(
   auth: OAuth2Client,
@@ -52,19 +53,21 @@ export async function createEvent(
     String(endDate.getDate()).padStart(2, "0"),
   ].join("-");
 
+  // reminderMinutes: undefined = calendar default, null = no reminder, number = custom
+  const reminders: calendar_v3.Schema$Event["reminders"] =
+    reminderMinutes === undefined
+      ? { useDefault: true }
+      : reminderMinutes === null
+        ? { useDefault: false, overrides: [] }
+        : { useDefault: false, overrides: [{ method: "popup", minutes: reminderMinutes }] };
+
   const requestBody: calendar_v3.Schema$Event = {
     summary,
     description,
     transparency: "transparent", // Show as free
     start: { date },
     end: { date: endDateStr },
-    reminders: {
-      useDefault: false,
-      overrides:
-        reminderMinutes === null
-          ? []
-          : [{ method: "popup", minutes: reminderMinutes ?? DEFAULT_REMINDER_MINUTES }],
-    },
+    reminders,
   };
 
   if (location) {

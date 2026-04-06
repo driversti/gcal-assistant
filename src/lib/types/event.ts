@@ -37,9 +37,9 @@ export type ReminderValue = "default" | number | null;
 export const ALL_DAY_REMINDER_PRESETS: { label: string; value: ReminderValue }[] = [
   { label: "Calendar default", value: "default" },
   { label: "None", value: null },
-  { label: "9 AM on event day", value: 900 },
-  { label: "1 day before at 9 AM", value: 2340 },
-  { label: "2 days before at 9 AM", value: 3780 },
+  { label: "1 day before at 9 AM", value: 900 },
+  { label: "2 days before at 9 AM", value: 2340 },
+  { label: "3 days before at 9 AM", value: 3780 },
 ];
 
 export const TIMED_REMINDER_PRESETS: { label: string; value: ReminderValue }[] = [

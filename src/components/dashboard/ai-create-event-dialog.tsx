@@ -91,7 +91,7 @@ export function AiCreateEventDialog({
   const [recurrence, setRecurrence] = useState<Recurrence>("YEARLY");
   const [sourceUrl, setSourceUrl] = useState("");
   const [photoUrl, setPhotoUrl] = useState("");
-  const [reminder, setReminder] = useState<ReminderValue>(900); // 9 AM on event day
+  const [reminder, setReminder] = useState<ReminderValue>("default"); // calendar default
 
   // Feedback
   const [feedback, setFeedback] = useState("");
@@ -159,7 +159,7 @@ export function AiCreateEventDialog({
     setRecurrence("YEARLY");
     setSourceUrl("");
     setPhotoUrl("");
-    setReminder(900);
+    setReminder("default");
     setFeedback("");
     setShowFeedback(false);
   }
