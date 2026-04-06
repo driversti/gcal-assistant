@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { COOKIE_NAME } from "@/lib/auth/session";
+import { getBaseUrl } from "@/lib/url";
 
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -21,7 +22,7 @@ export function proxy(request: NextRequest) {
     if (pathname.startsWith("/api/")) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    return NextResponse.redirect(new URL("/", request.url));
+    return NextResponse.redirect(new URL("/", getBaseUrl(request)));
   }
 
   return NextResponse.next();

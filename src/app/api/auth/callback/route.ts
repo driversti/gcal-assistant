@@ -3,14 +3,16 @@ import { cookies } from "next/headers";
 import { createOAuth2Client } from "@/lib/google/auth";
 import { encryptSession, setSessionCookie } from "@/lib/auth/session";
 import { google } from "googleapis";
+import { getBaseUrl } from "@/lib/url";
 
 const OAUTH_STATE_COOKIE = "gca_oauth_state";
 
 export async function GET(request: NextRequest) {
+  const baseUrl = getBaseUrl(request);
   const code = request.nextUrl.searchParams.get("code");
 
   if (!code) {
-    return NextResponse.redirect(new URL("/?error=no_code", request.url));
+    return NextResponse.redirect(new URL("/?error=no_code", baseUrl));
   }
 
   // Validate OAuth state to prevent login CSRF
@@ -21,7 +23,7 @@ export async function GET(request: NextRequest) {
 
   if (!returnedState || !storedState || returnedState !== storedState) {
     return NextResponse.redirect(
-      new URL("/?error=invalid_state", request.url)
+      new URL("/?error=invalid_state", baseUrl)
     );
   }
 
@@ -43,10 +45,10 @@ export async function GET(request: NextRequest) {
 
     await setSessionCookie(encrypted);
 
-    return NextResponse.redirect(new URL("/dashboard", request.url));
+    return NextResponse.redirect(new URL("/dashboard", baseUrl));
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
     console.error("OAuth callback error:", message);
-    return NextResponse.redirect(new URL("/?error=auth_failed", request.url));
+    return NextResponse.redirect(new URL("/?error=auth_failed", baseUrl));
   }
 }
