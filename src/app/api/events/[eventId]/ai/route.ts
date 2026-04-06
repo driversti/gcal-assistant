@@ -123,7 +123,7 @@ export async function POST(
             },
             recurrence: {
               type: Type.STRING,
-              description: "NONE, DAILY, WEEKLY, MONTHLY, or YEARLY",
+              description: "NONE, DAILY, WEEKLY, MONTHLY, or YEARLY. Default to YEARLY for birthdays, historical events, and anniversaries.",
             },
             sourceUrl: {
               type: Type.STRING,
@@ -178,7 +178,7 @@ export async function POST(
 
     const validRecurrences = ["NONE", "DAILY", "WEEKLY", "MONTHLY", "YEARLY"];
     if (!validRecurrences.includes(result.recurrence)) {
-      result.recurrence = "NONE";
+      result.recurrence = "YEARLY";
     }
 
     console.log(`[AI Enrich] ── Done ────────────────────────────────────\n`);

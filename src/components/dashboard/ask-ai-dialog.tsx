@@ -80,7 +80,7 @@ export function AskAiDialog({
   const [description, setDescription] = useState("");
   const [location, setLocation] = useState("");
   const [date, setDate] = useState("");
-  const [recurrence, setRecurrence] = useState<Recurrence>("NONE");
+  const [recurrence, setRecurrence] = useState<Recurrence>("YEARLY");
   const [sourceUrl, setSourceUrl] = useState("");
   const [photoUrl, setPhotoUrl] = useState("");
 
@@ -140,7 +140,7 @@ export function AskAiDialog({
     setDescription("");
     setLocation("");
     setDate("");
-    setRecurrence("NONE");
+    setRecurrence("YEARLY");
     setSourceUrl("");
     setPhotoUrl("");
     setFeedback("");
@@ -176,7 +176,7 @@ export function AskAiDialog({
       setDescription(enrichment.description);
       setLocation(enrichment.location || "");
       setDate(enrichment.date ?? "");
-      setRecurrence(enrichment.recurrence ?? "NONE");
+      setRecurrence(!enrichment.recurrence || enrichment.recurrence === "NONE" ? "YEARLY" : enrichment.recurrence);
       setSourceUrl(enrichment.sourceUrl);
       setPhotoUrl(enrichment.photoUrl || "");
       setFeedback("");

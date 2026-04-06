@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ExternalLink, X } from "lucide-react";
+import { ExternalLink, MapPin, X } from "lucide-react";
 import { RecurrenceDialog } from "./cells/recurrence-dialog";
 import type { CalendarEvent } from "@/lib/types/event";
 import type { CalendarInfo } from "@/lib/types/calendar";
@@ -273,11 +273,24 @@ export function EditPanel({
 
       <div className="space-y-1">
         <label className="text-sm font-medium">Location</label>
-        <Input
-          value={location}
-          onChange={(e) => setLocation(e.target.value)}
-          placeholder="Add location"
-        />
+        <div className="flex items-center gap-1">
+          <Input
+            value={location}
+            onChange={(e) => setLocation(e.target.value)}
+            placeholder="Add location"
+          />
+          {location.trim() && (
+            <a
+              href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(location.trim())}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex-shrink-0 rounded-md p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground"
+              title="Open in Google Maps"
+            >
+              <MapPin className="h-4 w-4" />
+            </a>
+          )}
+        </div>
       </div>
 
       <div className={`space-y-1 ${expanded ? "flex flex-1 flex-col" : ""}`}>
@@ -342,6 +355,7 @@ export function EditPanel({
         open={recurrenceOpen}
         onOpenChange={setRecurrenceOpen}
         onConfirm={handleRecurrenceConfirm}
+        action={pendingAction === "delete" ? "delete" : "save"}
       />
     </>
   );

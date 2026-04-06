@@ -97,6 +97,7 @@ export function EventActionsMenu({
           setRecurrenceOpen(false);
           onDelete(event, mode);
         }}
+        action="delete"
       />
     </>
   );

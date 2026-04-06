@@ -240,6 +240,7 @@ export default function DashboardPage() {
         open={aiCreateOpen}
         onOpenChange={setAiCreateOpen}
         calendars={calendars}
+        currentDate={dateString}
         onSuccess={refetch}
       />
     </div>

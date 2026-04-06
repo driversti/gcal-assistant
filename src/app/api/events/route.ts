@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
       description: description || "",
       location: location || null,
       date,
-      recurrence: recurrence || "NONE",
+      recurrence: recurrence || "YEARLY",
     });
 
     return NextResponse.json({

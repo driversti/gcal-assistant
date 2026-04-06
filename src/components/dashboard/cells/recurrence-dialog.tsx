@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -16,6 +16,7 @@ interface RecurrenceDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onConfirm: (mode: RecurrenceMode) => void;
+  action?: "save" | "delete";
 }
 
 const RECURRENCE_OPTIONS: { value: RecurrenceMode; label: string; description: string }[] = [
@@ -40,27 +41,37 @@ export function RecurrenceDialog({
   open,
   onOpenChange,
   onConfirm,
+  action = "save",
 }: RecurrenceDialogProps) {
-  const [selected, setSelected] = useState<RecurrenceMode>("single");
+  const defaultMode: RecurrenceMode = action === "delete" ? "all" : "single";
+  const [selected, setSelected] = useState<RecurrenceMode>(defaultMode);
+
+  useEffect(() => {
+    if (open) setSelected(defaultMode);
+  }, [open, defaultMode]);
 
   function handleConfirm() {
     onConfirm(selected);
     onOpenChange(false);
-    setSelected("single");
+    setSelected(defaultMode);
   }
 
   function handleCancel() {
     onOpenChange(false);
-    setSelected("single");
+    setSelected(defaultMode);
   }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Edit recurring event</DialogTitle>
+          <DialogTitle>
+            {action === "delete" ? "Delete recurring event" : "Edit recurring event"}
+          </DialogTitle>
           <DialogDescription>
-            This event is part of a series. How should this change be applied?
+            This event is part of a series. {action === "delete"
+              ? "Which events should be deleted?"
+              : "How should this change be applied?"}
           </DialogDescription>
         </DialogHeader>
         <div className="flex flex-col gap-1 py-4">

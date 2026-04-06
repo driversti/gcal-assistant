@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Loader2, ChevronDown, ChevronUp, Sparkles } from "lucide-react";
+import { Loader2, ChevronDown, ChevronUp, Sparkles, RefreshCw, ImageOff } from "lucide-react";
 import type { CalendarInfo } from "@/lib/types/calendar";
 
 type DialogState = "idle" | "generating" | "review" | "creating";
@@ -43,6 +43,7 @@ interface AiCreateEventDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   calendars: CalendarInfo[];
+  currentDate: string;
   onSuccess: () => void;
 }
 
@@ -65,6 +66,7 @@ export function AiCreateEventDialog({
   open,
   onOpenChange,
   calendars,
+  currentDate,
   onSuccess,
 }: AiCreateEventDialogProps) {
   // Form state
@@ -83,9 +85,12 @@ export function AiCreateEventDialog({
   const [description, setDescription] = useState("");
   const [location, setLocation] = useState("");
   const [date, setDate] = useState("");
-  const [recurrence, setRecurrence] = useState<Recurrence>("NONE");
+  const [recurrence, setRecurrence] = useState<Recurrence>("YEARLY");
   const [sourceUrl, setSourceUrl] = useState("");
   const [photoUrl, setPhotoUrl] = useState("");
+  const [photoError, setPhotoError] = useState(false);
+  const [photoLoading, setPhotoLoading] = useState(false);
+  const [rejectedPhotoUrls, setRejectedPhotoUrls] = useState<string[]>([]);
 
   // Feedback
   const [feedback, setFeedback] = useState("");
@@ -150,11 +155,52 @@ export function AiCreateEventDialog({
     setDescription("");
     setLocation("");
     setDate("");
-    setRecurrence("NONE");
+    setRecurrence("YEARLY");
     setSourceUrl("");
     setPhotoUrl("");
+    setPhotoError(false);
+    setPhotoLoading(false);
+    setRejectedPhotoUrls([]);
     setFeedback("");
     setShowFeedback(false);
+  }
+
+  async function handleFindNewPhoto() {
+    if (!summary && !title) return;
+    setPhotoLoading(true);
+    setPhotoError(false);
+
+    const rejected = photoUrl
+      ? [...rejectedPhotoUrls, photoUrl]
+      : rejectedPhotoUrls;
+    setRejectedPhotoUrls(rejected);
+
+    try {
+      const res = await fetch("/api/ai/photo", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          subject: summary || title,
+          rejectedUrls: rejected,
+          modelName: selectedModel || "gemini-2.5-flash",
+        }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "Failed to find photo");
+      }
+
+      const data = await res.json();
+      if (data.photoUrl) {
+        setPhotoUrl(data.photoUrl);
+        setPhotoError(false);
+      }
+    } catch {
+      setPhotoError(true);
+    } finally {
+      setPhotoLoading(false);
+    }
   }
 
   async function handleGenerate() {
@@ -197,10 +243,12 @@ export function AiCreateEventDialog({
       setSummary(event.summary);
       setDescription(event.description);
       setLocation(event.location || "");
-      setDate(event.date);
-      setRecurrence(event.recurrence);
+      setDate(event.date || currentDate);
+      setRecurrence(event.recurrence === "NONE" ? "YEARLY" : event.recurrence);
       setSourceUrl(event.sourceUrl);
       setPhotoUrl(event.photoUrl || "");
+      setPhotoError(false);
+      setRejectedPhotoUrls([]);
       setFeedback("");
       setShowFeedback(false);
       setDialogState("review");
@@ -433,13 +481,56 @@ export function AiCreateEventDialog({
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-xs font-medium">Photo URL</label>
-                <Input
-                  value={photoUrl}
-                  onChange={(e) => setPhotoUrl(e.target.value)}
-                  disabled={isBusy}
-                  placeholder="(optional)"
-                />
+                <label className="text-xs font-medium">Photo</label>
+                <div className="flex items-start gap-3">
+                  {/* Thumbnail preview */}
+                  <div className="relative h-16 w-16 flex-shrink-0 overflow-hidden rounded-md border bg-muted">
+                    {photoUrl && !photoError ? (
+                      <img
+                        src={photoUrl}
+                        alt="Preview"
+                        className="h-full w-full object-cover"
+                        onError={() => setPhotoError(true)}
+                      />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center text-muted-foreground">
+                        <ImageOff className="h-5 w-5" />
+                      </div>
+                    )}
+                    {photoLoading && (
+                      <div className="absolute inset-0 flex items-center justify-center bg-background/60">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+                    <Input
+                      value={photoUrl}
+                      onChange={(e) => {
+                        setPhotoUrl(e.target.value);
+                        setPhotoError(false);
+                      }}
+                      disabled={isBusy}
+                      placeholder="(optional)"
+                      className="text-xs"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleFindNewPhoto}
+                      disabled={isBusy || photoLoading}
+                      className="w-fit"
+                    >
+                      {photoLoading ? (
+                        <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                      ) : (
+                        <RefreshCw className="mr-1 h-3 w-3" />
+                      )}
+                      Find new photo
+                    </Button>
+                  </div>
+                </div>
               </div>
 
               {/* Feedback section */}
