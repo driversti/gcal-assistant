@@ -3,12 +3,30 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { X } from "lucide-react";
+import { ExternalLink, X } from "lucide-react";
 import { RecurrenceDialog } from "./cells/recurrence-dialog";
 import type { CalendarEvent } from "@/lib/types/event";
 import type { CalendarInfo } from "@/lib/types/calendar";
 import type { EventUpdateFields, RecurrenceMode } from "@/lib/types/event-update";
 import { format, parseISO, addDays, subDays } from "date-fns";
+
+function extractMeta(desc: string | null): {
+  photoUrl: string | null;
+  sourceUrl: string | null;
+  cleanDescription: string;
+} {
+  if (!desc) return { photoUrl: null, sourceUrl: null, cleanDescription: "" };
+  let photoUrl: string | null = null;
+  let sourceUrl: string | null = null;
+  const lines = desc.split("\n").filter((line) => {
+    const photoMatch = line.match(/^Photo:\s*(https?:\/\/\S+)/);
+    if (photoMatch) { photoUrl = photoMatch[1]; return false; }
+    const sourceMatch = line.match(/^Source:\s*(https?:\/\/\S+)/);
+    if (sourceMatch) { sourceUrl = sourceMatch[1]; return false; }
+    return true;
+  });
+  return { photoUrl, sourceUrl, cleanDescription: lines.join("\n").trim() };
+}
 
 interface EditPanelProps {
   event: CalendarEvent | null;
@@ -79,6 +97,7 @@ export function EditPanel({
 
   const calendarInfo = calendars.find((c) => c.id === event.calendarId);
   const isRecurring = !!event.recurringEventId;
+  const { photoUrl, sourceUrl } = extractMeta(event.description);
 
   function buildFields(): EventUpdateFields {
     const fields: EventUpdateFields = {};
@@ -172,17 +191,41 @@ export function EditPanel({
 
   const formContent = (
     <div className="flex flex-col gap-4 overflow-auto p-4">
-      {calendarInfo && (
-        <div className="flex items-center gap-2">
-          <span
-            className="h-3 w-3 rounded-full"
-            style={{ backgroundColor: calendarInfo.backgroundColor }}
-          />
-          <span className="text-sm text-muted-foreground">
-            {calendarInfo.summary}
-          </span>
+      <div className="flex items-start gap-3">
+        <div className="flex-1 space-y-2">
+          {calendarInfo && (
+            <div className="flex items-center gap-2">
+              <span
+                className="h-3 w-3 rounded-full"
+                style={{ backgroundColor: calendarInfo.backgroundColor }}
+              />
+              <span className="text-sm text-muted-foreground">
+                {calendarInfo.summary}
+              </span>
+            </div>
+          )}
+          {sourceUrl && (
+            <a
+              href={sourceUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1.5 text-sm text-primary hover:underline"
+            >
+              <ExternalLink className="h-3.5 w-3.5 shrink-0" />
+              {sourceUrl.includes("wikipedia.org") ? "Wikipedia" : "Source"}
+            </a>
+          )}
         </div>
-      )}
+        {photoUrl && (
+          <img
+            src={photoUrl}
+            alt={summary}
+            className="h-20 w-20 rounded-lg border object-cover"
+            referrerPolicy="no-referrer"
+            onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+          />
+        )}
+      </div>
 
       <div className="space-y-1">
         <label className="text-sm font-medium">Title</label>
