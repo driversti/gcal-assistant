@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Calendar } from "@/components/ui/calendar";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -26,9 +27,14 @@ import {
   Filter,
   LogOut,
   Moon,
+  Search,
   Sun,
+  X,
 } from "lucide-react";
+import { useSearchEvents } from "@/hooks/use-search-events";
+import { SearchResults } from "@/components/dashboard/search-results";
 import type { CalendarInfo } from "@/lib/types/calendar";
+import type { CalendarEvent } from "@/lib/types/event";
 
 interface TopBarProps {
   date: Date;
@@ -38,6 +44,7 @@ interface TopBarProps {
   selectedCalendarIds: string[];
   totalCalendarCount: number;
   onCalendarToggle: (id: string) => void;
+  onSearchSelect: (event: CalendarEvent) => void;
   email: string;
 }
 
@@ -49,12 +56,33 @@ export function TopBar({
   selectedCalendarIds,
   totalCalendarCount,
   onCalendarToggle,
+  onSearchSelect,
   email,
 }: TopBarProps) {
   const router = useRouter();
   const { theme, setTheme } = useTheme();
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [displayMonth, setDisplayMonth] = useState(date);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const searchRef = useRef<HTMLDivElement>(null);
+  const { results, loading: searchLoading } = useSearchEvents(searchQuery);
+
+  const closeSearch = useCallback(() => {
+    setSearchOpen(false);
+    setSearchQuery("");
+  }, []);
+
+  useEffect(() => {
+    if (!searchOpen) return;
+    function handleMouseDown(e: MouseEvent) {
+      if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
+        closeSearch();
+      }
+    }
+    document.addEventListener("mousedown", handleMouseDown);
+    return () => document.removeEventListener("mousedown", handleMouseDown);
+  }, [searchOpen, closeSearch]);
 
   async function handleLogout() {
     await fetch("/api/auth/logout", { method: "POST" });
@@ -89,7 +117,7 @@ export function TopBar({
   }
 
   return (
-    <div className="flex items-center gap-2 border-b px-3 py-2">
+    <div className="relative flex items-center gap-2 border-b px-3 py-2">
       {/* Prev day */}
       <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={handlePrevDay}>
         <ChevronLeft className="h-4 w-4" />
@@ -131,18 +159,64 @@ export function TopBar({
         <ChevronRight className="h-4 w-4" />
       </Button>
 
-      {/* Today button */}
-      <Button
-        variant="outline"
-        size="sm"
-        className="h-7 shrink-0 text-xs"
-        onClick={() => onDateChange(new Date())}
-      >
-        Today
-      </Button>
+      {/* Today button — hidden when search is open */}
+      {!searchOpen && (
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-7 shrink-0 text-xs"
+          onClick={() => onDateChange(new Date())}
+        >
+          Today
+        </Button>
+      )}
 
-      {/* Spacer */}
-      <div className="flex-1" />
+      {/* Search area */}
+      {searchOpen ? (
+        <div ref={searchRef} className="relative flex flex-1 items-center gap-1">
+          <Input
+            autoFocus
+            placeholder="Search events…"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Escape") closeSearch();
+            }}
+            className="h-7 text-sm"
+          />
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7 shrink-0"
+            onClick={closeSearch}
+          >
+            <X className="h-3.5 w-3.5" />
+          </Button>
+          <SearchResults
+            results={results}
+            loading={searchLoading}
+            query={searchQuery}
+            onSelect={(event) => {
+              closeSearch();
+              onSearchSelect(event);
+            }}
+          />
+        </div>
+      ) : (
+        <div className="flex-1" />
+      )}
+
+      {/* Search toggle */}
+      {!searchOpen && (
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8 shrink-0"
+          onClick={() => setSearchOpen(true)}
+        >
+          <Search className="h-4 w-4" />
+        </Button>
+      )}
 
       {/* Filter popover */}
       <Popover>

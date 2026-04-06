@@ -157,6 +157,17 @@ export default function DashboardPage() {
     [refetch]
   );
 
+  const handleSearchSelect = useCallback(
+    (event: CalendarEvent) => {
+      const eventDate = event.start.split("T")[0];
+      const params = new URLSearchParams(searchParams.toString());
+      params.set("date", eventDate);
+      router.push(`/dashboard?${params.toString()}`);
+      setEditingEvent(event);
+    },
+    [router, searchParams]
+  );
+
   const isEditOpen = !!editingEvent;
 
   return (
@@ -169,6 +180,7 @@ export default function DashboardPage() {
         selectedCalendarIds={calendarIds}
         totalCalendarCount={calendars.length}
         onCalendarToggle={handleCalendarToggle}
+        onSearchSelect={handleSearchSelect}
         email={email}
       />
 
