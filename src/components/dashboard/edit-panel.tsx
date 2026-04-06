@@ -76,12 +76,14 @@ export function EditPanel({
   const [error, setError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState(false);
   const [showPhotoSearch, setShowPhotoSearch] = useState(false);
+  const [photoBroken, setPhotoBroken] = useState(false);
 
   useEffect(() => {
     if (event && open) {
       setError(null);
       setExpanded(false);
       setShowPhotoSearch(false);
+      setPhotoBroken(false);
       setSummary(event.summary);
       setLocation(event.location ?? "");
       setDescription(event.description ?? "");
@@ -218,7 +220,7 @@ export function EditPanel({
   }
 
   const formContent = (
-    <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-auto p-4">
+    <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-auto overscroll-contain p-4">
       <div className="flex items-start gap-3">
         <div className="flex-1 space-y-2">
           <Select
@@ -268,7 +270,7 @@ export function EditPanel({
             </a>
           )}
         </div>
-        {photoUrl ? (
+        {photoUrl && !photoBroken ? (
           <img
             src={photoUrl}
             alt={summary}
@@ -276,7 +278,7 @@ export function EditPanel({
             referrerPolicy="no-referrer"
             onClick={() => setShowPhotoSearch(!showPhotoSearch)}
             title="Click to find a different photo"
-            onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+            onError={() => setPhotoBroken(true)}
           />
         ) : (
           <button

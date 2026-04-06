@@ -209,7 +209,7 @@ export default function DashboardPage() {
           ref={swipe.ref}
           onTouchStart={swipe.onTouchStart}
           onTouchEnd={swipe.onTouchEnd}
-          className={`flex-1 overflow-auto p-4 ${isEditOpen ? "sm:mr-0" : ""}`}
+          className={`flex-1 overflow-auto p-4 ${isEditOpen ? "touch-none sm:mr-0 sm:touch-auto" : ""}`}
         >
           <TimelineView
             events={events}
