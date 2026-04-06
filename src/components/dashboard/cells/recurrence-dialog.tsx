@@ -43,7 +43,7 @@ export function RecurrenceDialog({
   onConfirm,
   action = "save",
 }: RecurrenceDialogProps) {
-  const defaultMode: RecurrenceMode = action === "delete" ? "all" : "single";
+  const defaultMode: RecurrenceMode = "all";
   const [selected, setSelected] = useState<RecurrenceMode>(defaultMode);
 
   useEffect(() => {

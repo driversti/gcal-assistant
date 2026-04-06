@@ -231,6 +231,7 @@ export default function DashboardPage() {
             onClose={() => setEditingEvent(null)}
             onUpdateEvent={handleUpdateEvent}
             onDelete={handleDeleteEvent}
+            onMove={handleMoveEvent}
           />
         )}
       </div>

@@ -3,7 +3,15 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ExternalLink, MapPin, X } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { ExternalLink, MapPin, Search, X } from "lucide-react";
+import { PhotoCarousel } from "./photo-carousel";
 import { RecurrenceDialog } from "./cells/recurrence-dialog";
 import type { CalendarEvent } from "@/lib/types/event";
 import type { CalendarInfo } from "@/lib/types/calendar";
@@ -41,6 +49,7 @@ interface EditPanelProps {
     recurringEventId?: string
   ) => Promise<void>;
   onDelete: (event: CalendarEvent, recurrenceMode?: RecurrenceMode) => Promise<void>;
+  onMove: (event: CalendarEvent, targetCalendarId: string) => Promise<void>;
 }
 
 export function EditPanel({
@@ -50,6 +59,7 @@ export function EditPanel({
   onClose,
   onUpdateEvent,
   onDelete,
+  onMove,
 }: EditPanelProps) {
   const [summary, setSummary] = useState("");
   const [location, setLocation] = useState("");
@@ -65,11 +75,13 @@ export function EditPanel({
   const [pendingFields, setPendingFields] = useState<EventUpdateFields | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState(false);
+  const [showPhotoSearch, setShowPhotoSearch] = useState(false);
 
   useEffect(() => {
     if (event && open) {
       setError(null);
       setExpanded(false);
+      setShowPhotoSearch(false);
       setSummary(event.summary);
       setLocation(event.location ?? "");
       setDescription(event.description ?? "");
@@ -97,7 +109,23 @@ export function EditPanel({
 
   const calendarInfo = calendars.find((c) => c.id === event.calendarId);
   const isRecurring = !!event.recurringEventId;
-  const { photoUrl, sourceUrl } = extractMeta(event.description);
+  const { photoUrl: originalPhotoUrl, sourceUrl } = extractMeta(event.description);
+  const currentMeta = extractMeta(description);
+  const photoUrl = currentMeta.photoUrl;
+
+  function updatePhotoInDescription(newPhotoUrl: string) {
+    if (description.match(/^Photo:\s*https?:\/\/\S+/m)) {
+      // Replace existing Photo: line
+      setDescription(
+        description.replace(/^Photo:\s*https?:\/\/\S+/m, `Photo: ${newPhotoUrl}`)
+      );
+    } else {
+      // Append Photo: line
+      const trimmed = description.trimEnd();
+      const separator = trimmed.includes("Source:") ? "\n" : "\n\n";
+      setDescription(trimmed + separator + `Photo: ${newPhotoUrl}`);
+    }
+  }
 
   function buildFields(): EventUpdateFields {
     const fields: EventUpdateFields = {};
@@ -193,17 +221,41 @@ export function EditPanel({
     <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-auto p-4">
       <div className="flex items-start gap-3">
         <div className="flex-1 space-y-2">
-          {calendarInfo && (
-            <div className="flex items-center gap-2">
-              <span
-                className="h-3 w-3 rounded-full"
-                style={{ backgroundColor: calendarInfo.backgroundColor }}
-              />
-              <span className="text-sm text-muted-foreground">
-                {calendarInfo.summary}
-              </span>
-            </div>
-          )}
+          <Select
+            value={event.calendarId}
+            onValueChange={(val) => {
+              if (val && val !== event.calendarId) {
+                onMove(event, val);
+              }
+            }}
+          >
+            <SelectTrigger className="h-7 w-fit gap-1.5 border-none bg-transparent px-1 text-sm text-muted-foreground shadow-none hover:bg-accent">
+              <SelectValue>
+                {() => (
+                  <div className="flex items-center gap-1.5">
+                    <span
+                      className="h-2.5 w-2.5 rounded-full"
+                      style={{ backgroundColor: calendarInfo?.backgroundColor }}
+                    />
+                    {calendarInfo?.summary || "Calendar"}
+                  </div>
+                )}
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              {calendars
+                .filter((c) => c.accessRole === "owner" || c.accessRole === "writer")
+                .map((cal) => (
+                  <SelectItem key={cal.id} value={cal.id}>
+                    <span
+                      className="mr-1.5 inline-block h-2.5 w-2.5 rounded-full"
+                      style={{ backgroundColor: cal.backgroundColor }}
+                    />
+                    {cal.summary}
+                  </SelectItem>
+                ))}
+            </SelectContent>
+          </Select>
           {sourceUrl && (
             <a
               href={sourceUrl}
@@ -216,16 +268,37 @@ export function EditPanel({
             </a>
           )}
         </div>
-        {photoUrl && (
+        {photoUrl ? (
           <img
             src={photoUrl}
             alt={summary}
-            className="h-20 w-20 rounded-lg border object-cover"
+            className="h-20 w-20 cursor-pointer rounded-lg border object-cover"
             referrerPolicy="no-referrer"
+            onClick={() => setShowPhotoSearch(!showPhotoSearch)}
+            title="Click to find a different photo"
             onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
           />
+        ) : (
+          <button
+            type="button"
+            onClick={() => setShowPhotoSearch(!showPhotoSearch)}
+            className="flex h-20 w-20 items-center justify-center rounded-lg border border-dashed text-muted-foreground hover:border-primary hover:text-primary"
+            title="Find an image"
+          >
+            <Search className="h-5 w-5" />
+          </button>
         )}
       </div>
+
+      {showPhotoSearch && (
+        <PhotoCarousel
+          photoUrl={photoUrl || ""}
+          onPhotoUrlChange={updatePhotoInDescription}
+          subject={summary}
+          sourceUrl={sourceUrl || undefined}
+          modelName="gemini-2.5-flash"
+        />
+      )}
 
       <div className="space-y-1">
         <label className="text-sm font-medium">Title</label>

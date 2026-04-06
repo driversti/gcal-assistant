@@ -17,6 +17,7 @@ interface EventCardProps {
   isDuplicate: boolean;
   onTap: () => void;
   actionMenu: React.ReactNode;
+  className?: string;
 }
 
 export function EventCard({
@@ -25,6 +26,7 @@ export function EventCard({
   isDuplicate,
   onTap,
   actionMenu,
+  className,
 }: EventCardProps) {
   const sourceUrl = extractSourceUrl(event.description);
 
@@ -32,24 +34,20 @@ export function EventCard({
     return (
       <div
         onClick={onTap}
-        className="flex cursor-pointer items-center gap-2 rounded-lg border-l-[3px] px-3 py-2.5 transition-colors hover:brightness-95"
+        className={`flex cursor-pointer items-center gap-2 rounded-lg border-l-[3px] px-3 py-2.5 transition-colors hover:brightness-95 ${className || ""}`}
         style={{
           borderLeftColor: event.calendarColor,
           background: `linear-gradient(90deg, ${event.calendarColor}26, transparent)`,
         }}
       >
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-3">
-            <span
-              className="h-2 w-2 shrink-0 rounded-full"
-              style={{ backgroundColor: event.calendarColor }}
-            />
+          <div className="flex items-center">
             <span className="min-w-0 flex-1 truncate text-sm font-semibold">
               {event.summary}
             </span>
           </div>
           {(isDuplicate || event.recurringEventId || sourceUrl || event.calendarName) && (
-            <div className="mt-1 flex flex-wrap items-center gap-2 pl-5">
+            <div className="mt-1 flex flex-wrap items-center gap-2">
               {isDuplicate && (
                 <Badge
                   variant="outline"

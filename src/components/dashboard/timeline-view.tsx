@@ -51,7 +51,7 @@ export function TimelineView({
   onRefetch,
 }: TimelineViewProps) {
   const allDayEvents = useMemo(
-    () => events.filter((e) => e.isAllDay),
+    () => events.filter((e) => e.isAllDay).sort((a, b) => a.calendarId.localeCompare(b.calendarId)),
     [events]
   );
   const timedEvents = useMemo(
@@ -101,16 +101,21 @@ export function TimelineView({
             All Day
           </div>
           <div className="flex flex-col gap-1.5">
-            {allDayEvents.map((event) => (
-              <EventCard
-                key={eventKey(event)}
-                event={event}
-                variant="allday"
-                isDuplicate={duplicateGroups.has(eventKey(event))}
-                onTap={() => onEditEvent(event)}
-                actionMenu={renderActionMenu(event)}
-              />
-            ))}
+            {allDayEvents.map((event, idx) => {
+              const prevCalendar = idx > 0 ? allDayEvents[idx - 1].calendarId : null;
+              const isNewCalendar = prevCalendar !== null && event.calendarId !== prevCalendar;
+              return (
+                <EventCard
+                  key={eventKey(event)}
+                  event={event}
+                  variant="allday"
+                  isDuplicate={duplicateGroups.has(eventKey(event))}
+                  onTap={() => onEditEvent(event)}
+                  actionMenu={renderActionMenu(event)}
+                  className={isNewCalendar ? "mt-2" : undefined}
+                />
+              );
+            })}
           </div>
         </div>
       )}
