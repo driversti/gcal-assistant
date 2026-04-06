@@ -212,7 +212,6 @@ export function AskAiDialog({
             description: fullDescription,
             location: location.trim() || null,
             transparency: "transparent",
-            reminders: { useDefault: true },
           },
           recurrenceMode: event.recurringEventId ? "all" : "single",
           recurringEventId: event.recurringEventId ?? undefined,
