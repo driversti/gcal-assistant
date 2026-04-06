@@ -46,6 +46,7 @@ interface TopBarProps {
   onCalendarToggle: (id: string) => void;
   onSearchSelect: (event: CalendarEvent) => void;
   email: string;
+  picture: string | null;
 }
 
 export function TopBar({
@@ -58,6 +59,7 @@ export function TopBar({
   onCalendarToggle,
   onSearchSelect,
   email,
+  picture,
 }: TopBarProps) {
   const router = useRouter();
   const { theme, setTheme } = useTheme();
@@ -257,8 +259,10 @@ export function TopBar({
 
       {/* Avatar dropdown */}
       <DropdownMenu>
-        <DropdownMenuTrigger className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-bold cursor-pointer border-0 p-0">
-          {initials}
+        <DropdownMenuTrigger className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-bold cursor-pointer border-0 p-0 overflow-hidden" suppressHydrationWarning>
+          {picture
+            ? <img src={picture} alt="" className="h-full w-full object-cover" referrerPolicy="no-referrer" />
+            : initials}
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
           <div className="px-2 py-1.5 text-xs text-muted-foreground">

@@ -41,6 +41,7 @@ export async function GET(request: NextRequest) {
       refresh_token: tokens.refresh_token!,
       expiry_date: tokens.expiry_date!,
       email: userInfo.email!,
+      picture: userInfo.picture ?? undefined,
     });
 
     await setSessionCookie(encrypted);

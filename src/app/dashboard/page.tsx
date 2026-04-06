@@ -62,10 +62,14 @@ export default function DashboardPage() {
   const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null);
 
   const [email, setEmail] = useState("");
+  const [picture, setPicture] = useState<string | null>(null);
   useEffect(() => {
     fetch("/api/auth/session")
       .then((r) => r.json())
-      .then((data) => setEmail(data.email ?? ""))
+      .then((data) => {
+        setEmail(data.email ?? "");
+        setPicture(data.picture ?? null);
+      })
       .catch(() => {});
   }, []);
 
@@ -182,6 +186,7 @@ export default function DashboardPage() {
         onCalendarToggle={handleCalendarToggle}
         onSearchSelect={handleSearchSelect}
         email={email}
+        picture={picture}
       />
 
       <div className="flex flex-1 overflow-hidden">

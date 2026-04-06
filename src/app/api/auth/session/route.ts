@@ -11,5 +11,6 @@ export async function GET() {
   return NextResponse.json({
     authenticated: true,
     email: session.email,
+    picture: session.picture ?? null,
   });
 }

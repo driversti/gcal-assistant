@@ -8,6 +8,7 @@ export interface SessionTokens {
   refresh_token: string;
   expiry_date: number;
   email: string;
+  picture?: string;
 }
 
 function getSecretKey(): Uint8Array {
