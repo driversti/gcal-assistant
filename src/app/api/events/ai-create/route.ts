@@ -10,7 +10,7 @@ Rules:
 - For people on birthday calendars: include death year in the language of the title, e.g. "1814 — Тарас Шевченко (п. 1861)"
 - For people on death calendars: include birth year in the language of the title, e.g. "1861 — Тарас Шевченко (н. 1814)"
 - For non-person events: just year and name, e.g. "1986 — Chernobyl disaster"
-- Use "d." / "b." for English, "п." / "н." for Ukrainian, "ум." / "р." for Polish, etc. — use the abbreviation natural for the language detected in the title.
+- Use "d." / "b." for English, "п." / "н." for Ukrainian, "ум." / "р." for Russian, etc. — use the abbreviation natural for the language detected in the title.
 - Description: brief factual description of the person/event (role, significance, key facts) — 1-3 sentences. Do NOT include URLs in the description.
 - Detect the language of the input title and write ALL fields (summary, description, location) in that same language.
 - You MAY rewrite the title/summary to be more appropriate for the calendar context.

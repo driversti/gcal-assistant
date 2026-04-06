@@ -1,9 +1,15 @@
 "use client";
 
 import { Badge } from "@/components/ui/badge";
-import { MapPin } from "lucide-react";
+import { ExternalLink, MapPin } from "lucide-react";
 import type { CalendarEvent } from "@/lib/types/event";
 import { format, parseISO } from "date-fns";
+
+function extractSourceUrl(description: string | null): string | null {
+  if (!description) return null;
+  const match = description.match(/\nSource:\s*(https?:\/\/\S+)/);
+  return match ? match[1] : null;
+}
 
 interface EventCardProps {
   event: CalendarEvent;
@@ -20,6 +26,8 @@ export function EventCard({
   onTap,
   actionMenu,
 }: EventCardProps) {
+  const sourceUrl = extractSourceUrl(event.description);
+
   if (variant === "allday") {
     return (
       <div
@@ -49,6 +57,18 @@ export function EventCard({
           <Badge variant="secondary" className="shrink-0 px-1.5 py-0 text-[10px]">
             Recurring
           </Badge>
+        )}
+        {sourceUrl && (
+          <a
+            href={sourceUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            title="Open source article"
+            onClick={(e) => e.stopPropagation()}
+            className="shrink-0 text-muted-foreground transition-colors hover:text-foreground"
+          >
+            <ExternalLink className="h-3.5 w-3.5" />
+          </a>
         )}
         <span className="shrink-0 text-xs text-muted-foreground">
           {event.calendarName}
@@ -81,6 +101,20 @@ export function EventCard({
           <div className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
             <MapPin className="h-3 w-3 shrink-0" />
             <span className="truncate">{event.location}</span>
+          </div>
+        )}
+        {sourceUrl && (
+          <div className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
+            <a
+              href={sourceUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              className="flex items-center gap-1 transition-colors hover:text-foreground"
+            >
+              <ExternalLink className="h-3 w-3 shrink-0" />
+              <span className="truncate">Source</span>
+            </a>
           </div>
         )}
         <div className="mt-1.5 flex flex-wrap gap-1">
