@@ -25,6 +25,7 @@ function toGoogleEventBody(
   if (fields.start !== undefined) body.start = fields.start;
   if (fields.end !== undefined) body.end = fields.end;
   if (fields.reminders !== undefined) body.reminders = fields.reminders;
+  if (fields.recurrence !== undefined) body.recurrence = fields.recurrence;
 
   return body;
 }
@@ -59,21 +60,14 @@ export async function updateEvent(
   }
 
   if (recurrenceMode === "all") {
-    // Full PUT on the master event so ALL instances (including already-materialised
-    // ones) inherit the changes. A simple patch on the master only updates the
-    // template for future instances.
-    const { data: masterEvent } = await calendarApi.events.get({
+    // Patch the master event so all instances inherit the changes.
+    await calendarApi.events.patch({
       calendarId,
       eventId: recurringEventId,
+      requestBody: body,
     });
 
-    await calendarApi.events.update({
-      calendarId,
-      eventId: recurringEventId,
-      requestBody: { ...masterEvent, ...body },
-    });
-
-    // Materialized instances keep their own identity — patch the specific
+    // Materialized instances keep their own overrides — patch the specific
     // instance so the user sees the change immediately.
     if (eventId !== recurringEventId) {
       await calendarApi.events.patch({

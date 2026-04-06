@@ -1,3 +1,5 @@
+export type Recurrence = "NONE" | "DAILY" | "WEEKLY" | "MONTHLY" | "YEARLY";
+
 export interface CalendarEvent {
   id: string;
   calendarId: string;
@@ -14,6 +16,8 @@ export interface CalendarEvent {
   created: string;
   updated: string;
   recurringEventId?: string;
+  /** Recurrence frequency parsed from the master event's RRULE, or "NONE" */
+  recurrence: Recurrence;
   /** Whether the event uses the calendar's default reminders */
   reminderUseDefault: boolean;
   /** First popup reminder in minutes (Google Calendar format), or null if none/default */
@@ -46,4 +50,12 @@ export const TIMED_REMINDER_PRESETS: { label: string; value: ReminderValue }[] =
   { label: "10 minutes before", value: 10 },
   { label: "30 minutes before", value: 30 },
   { label: "1 hour before", value: 60 },
+];
+
+export const RECURRENCE_PRESETS: { label: string; value: Recurrence }[] = [
+  { label: "No repeat", value: "NONE" },
+  { label: "Daily", value: "DAILY" },
+  { label: "Weekly", value: "WEEKLY" },
+  { label: "Monthly", value: "MONTHLY" },
+  { label: "Yearly", value: "YEARLY" },
 ];

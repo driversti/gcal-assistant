@@ -14,8 +14,8 @@ import { ExternalLink, MapPin, Search, X } from "lucide-react";
 import { PhotoCarousel } from "./photo-carousel";
 import { RecurrenceDialog } from "./cells/recurrence-dialog";
 import type { CalendarEvent } from "@/lib/types/event";
-import type { ReminderValue } from "@/lib/types/event";
-import { ALL_DAY_REMINDER_PRESETS, TIMED_REMINDER_PRESETS } from "@/lib/types/event";
+import type { ReminderValue, Recurrence } from "@/lib/types/event";
+import { ALL_DAY_REMINDER_PRESETS, TIMED_REMINDER_PRESETS, RECURRENCE_PRESETS } from "@/lib/types/event";
 import type { CalendarInfo } from "@/lib/types/calendar";
 import type { EventUpdateFields, RecurrenceMode } from "@/lib/types/event-update";
 import { format, parseISO, addDays, subDays } from "date-fns";
@@ -80,6 +80,7 @@ export function EditPanel({
   const [showPhotoSearch, setShowPhotoSearch] = useState(false);
   const [photoBroken, setPhotoBroken] = useState(false);
   const [reminder, setReminder] = useState<ReminderValue>("default");
+  const [recurrence, setRecurrence] = useState<Recurrence>("NONE");
 
   useEffect(() => {
     if (event && open) {
@@ -93,8 +94,9 @@ export function EditPanel({
       setReminder(
         event.reminderUseDefault
           ? "default"
-          : event.reminderMinutes ?? 900
+          : event.reminderMinutes ?? null
       );
+      setRecurrence(event.recurrence ?? "NONE");
       if (event.isAllDay) {
         setStartDate(event.start.split("T")[0]);
         // Google Calendar uses exclusive end dates for all-day events.
@@ -170,7 +172,6 @@ export function EditPanel({
       : event!.reminderMinutes ?? null;
     if (reminder !== origReminder) {
       if (reminder === "default") {
-        // "Calendar default" still uses the calendar's default reminders
         fields.reminders = { useDefault: true };
       } else if (reminder === null) {
         fields.reminders = { useDefault: false, overrides: [] };
@@ -180,6 +181,18 @@ export function EditPanel({
           overrides: [{ method: "popup", minutes: reminder }],
         };
       }
+    }
+
+    // Determine if recurrence changed
+    const origRecurrence = event!.recurrence ?? "NONE";
+    if (recurrence !== origRecurrence) {
+      const rruleMap: Record<string, string> = {
+        DAILY: "RRULE:FREQ=DAILY",
+        WEEKLY: "RRULE:FREQ=WEEKLY",
+        MONTHLY: "RRULE:FREQ=MONTHLY",
+        YEARLY: "RRULE:FREQ=YEARLY",
+      };
+      fields.recurrence = recurrence === "NONE" ? [] : [rruleMap[recurrence]];
     }
 
     return fields;
@@ -373,38 +386,63 @@ export function EditPanel({
         )}
       </div>
 
-      <div className="space-y-1">
-        <label className="text-sm font-medium">Reminder</label>
-        <Select
-          value={String(reminder ?? "none")}
-          onValueChange={(val) => {
-            if (val === "default") setReminder("default");
-            else if (val === "none") setReminder(null);
-            else setReminder(Number(val));
-          }}
-        >
-          <SelectTrigger className="w-full">
-            <SelectValue>
-              {(value: string) => {
-                const presets = event.isAllDay ? ALL_DAY_REMINDER_PRESETS : TIMED_REMINDER_PRESETS;
-                const preset = presets.find((p) => String(p.value ?? "none") === value);
-                return preset?.label ?? `${value} min before`;
-              }}
-            </SelectValue>
-          </SelectTrigger>
-          <SelectContent>
-            {(event.isAllDay ? ALL_DAY_REMINDER_PRESETS : TIMED_REMINDER_PRESETS).map(
-              (preset) => (
-                <SelectItem
-                  key={String(preset.value ?? "none")}
-                  value={String(preset.value ?? "none")}
-                >
+      <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-1">
+          <label className="text-sm font-medium">Reminder</label>
+          <Select
+            value={String(reminder ?? "none")}
+            onValueChange={(val) => {
+              if (val === "default") setReminder("default");
+              else if (val === "none") setReminder(null);
+              else setReminder(Number(val));
+            }}
+          >
+            <SelectTrigger className="w-full">
+              <SelectValue>
+                {(value: string) => {
+                  const presets = event.isAllDay ? ALL_DAY_REMINDER_PRESETS : TIMED_REMINDER_PRESETS;
+                  const preset = presets.find((p) => String(p.value ?? "none") === value);
+                  return preset?.label ?? `${value} min before`;
+                }}
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              {(event.isAllDay ? ALL_DAY_REMINDER_PRESETS : TIMED_REMINDER_PRESETS).map(
+                (preset) => (
+                  <SelectItem
+                    key={String(preset.value ?? "none")}
+                    value={String(preset.value ?? "none")}
+                  >
+                    {preset.label}
+                  </SelectItem>
+                )
+              )}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1">
+          <label className="text-sm font-medium">Recurrence</label>
+          <Select
+            value={recurrence}
+            onValueChange={(val) => setRecurrence(val as Recurrence)}
+          >
+            <SelectTrigger className="w-full">
+              <SelectValue>
+                {(value: string) => {
+                  const preset = RECURRENCE_PRESETS.find((p) => p.value === value);
+                  return preset?.label ?? value;
+                }}
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              {RECURRENCE_PRESETS.map((preset) => (
+                <SelectItem key={preset.value} value={preset.value}>
                   {preset.label}
                 </SelectItem>
-              )
-            )}
-          </SelectContent>
-        </Select>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       <div className="space-y-1">

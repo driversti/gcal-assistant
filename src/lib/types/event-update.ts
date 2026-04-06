@@ -10,6 +10,7 @@ export interface EventUpdateFields {
     useDefault: boolean;
     overrides?: { method: string; minutes: number }[];
   };
+  recurrence?: string[];
 }
 
 export type RecurrenceMode = "single" | "thisAndFollowing" | "all";

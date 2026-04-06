@@ -1,7 +1,17 @@
 import { google } from "googleapis";
 import type { OAuth2Client } from "google-auth-library";
-import type { CalendarEvent } from "@/lib/types/event";
+import type { CalendarEvent, Recurrence } from "@/lib/types/event";
 import type { CalendarInfo } from "@/lib/types/calendar";
+
+function parseRecurrence(rrules: string[] | null | undefined): Recurrence {
+  if (!rrules || rrules.length === 0) return "NONE";
+  const rule = rrules.find((r) => r.startsWith("RRULE:")) ?? rrules[0];
+  if (rule.includes("FREQ=DAILY")) return "DAILY";
+  if (rule.includes("FREQ=WEEKLY")) return "WEEKLY";
+  if (rule.includes("FREQ=MONTHLY")) return "MONTHLY";
+  if (rule.includes("FREQ=YEARLY")) return "YEARLY";
+  return "NONE";
+}
 
 export async function searchEvents(
   auth: OAuth2Client,
@@ -48,6 +58,7 @@ export async function searchEvents(
           created: item.created ?? "",
           updated: item.updated ?? "",
           recurringEventId: item.recurringEventId ?? undefined,
+          recurrence: "NONE",
           reminderUseDefault: item.reminders?.useDefault ?? true,
           reminderMinutes: popupOverride?.minutes ?? null,
         };
@@ -59,6 +70,36 @@ export async function searchEvents(
   for (const result of results) {
     if (result.status === "fulfilled") {
       events.push(...result.value);
+    }
+  }
+
+  // Fetch master events to populate recurrence info
+  const recurringIds = new Map<string, string>();
+  for (const e of events) {
+    if (e.recurringEventId && !recurringIds.has(e.recurringEventId)) {
+      recurringIds.set(e.recurringEventId, e.calendarId);
+    }
+  }
+  if (recurringIds.size > 0) {
+    const masters = await Promise.allSettled(
+      Array.from(recurringIds.entries()).map(async ([masterId, calId]) => {
+        const { data } = await calendarApi.events.get({
+          calendarId: calId,
+          eventId: masterId,
+        });
+        return { masterId, recurrence: parseRecurrence(data.recurrence) };
+      })
+    );
+    const recurrenceMap = new Map<string, Recurrence>();
+    for (const r of masters) {
+      if (r.status === "fulfilled") {
+        recurrenceMap.set(r.value.masterId, r.value.recurrence);
+      }
+    }
+    for (const e of events) {
+      if (e.recurringEventId) {
+        e.recurrence = recurrenceMap.get(e.recurringEventId) ?? "NONE";
+      }
     }
   }
 
