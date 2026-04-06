@@ -175,8 +175,8 @@ export function AskAiDialog({
       setSummary(enrichment.summary);
       setDescription(enrichment.description);
       setLocation(enrichment.location || "");
-      setDate(enrichment.date);
-      setRecurrence(enrichment.recurrence);
+      setDate(enrichment.date ?? "");
+      setRecurrence(enrichment.recurrence ?? "NONE");
       setSourceUrl(enrichment.sourceUrl);
       setPhotoUrl(enrichment.photoUrl || "");
       setFeedback("");
