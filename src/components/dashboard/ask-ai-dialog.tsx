@@ -18,7 +18,23 @@ import {
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Loader2, ChevronDown, ChevronUp, Sparkles } from "lucide-react";
 import type { CalendarEvent } from "@/lib/types/event";
+
+type DialogState = "idle" | "enriching" | "review" | "saving";
+
+interface Enrichment {
+  summary: string;
+  description: string;
+  location: string;
+  sourceUrl: string;
+  photoUrl: string;
+}
+
+interface AiModel {
+  name: string;
+  displayName: string;
+}
 
 interface AskAiDialogProps {
   event: CalendarEvent | null;
@@ -27,20 +43,47 @@ interface AskAiDialogProps {
   onSuccess: () => void;
 }
 
-interface AiModel {
-  name: string;
-  displayName: string;
+function buildFullDescription(
+  description: string,
+  sourceUrl: string,
+  photoUrl: string | null
+): string {
+  let full = description;
+  if (sourceUrl) {
+    full += `\n\nSource: ${sourceUrl}`;
+  }
+  if (photoUrl) {
+    full += `\nPhoto: ${photoUrl}`;
+  }
+  return full;
 }
 
-export function AskAiDialog({ event, open, onOpenChange, onSuccess }: AskAiDialogProps) {
-  const [language, setLanguage] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
+export function AskAiDialog({
+  event,
+  open,
+  onOpenChange,
+  onSuccess,
+}: AskAiDialogProps) {
+  const [dialogState, setDialogState] = useState<DialogState>("idle");
   const [error, setError] = useState<string | null>(null);
 
+  // AI model
   const [models, setModels] = useState<AiModel[]>([]);
   const [selectedModel, setSelectedModel] = useState<string>("");
   const [isModelsLoading, setIsModelsLoading] = useState(false);
 
+  // Enriched fields (editable after AI fills them)
+  const [summary, setSummary] = useState("");
+  const [description, setDescription] = useState("");
+  const [location, setLocation] = useState("");
+  const [sourceUrl, setSourceUrl] = useState("");
+  const [photoUrl, setPhotoUrl] = useState("");
+
+  // Feedback
+  const [feedback, setFeedback] = useState("");
+  const [showFeedback, setShowFeedback] = useState(false);
+
+  // Load AI models when dialog opens
   useEffect(() => {
     if (open && models.length === 0) {
       setIsModelsLoading(true);
@@ -49,33 +92,33 @@ export function AskAiDialog({ event, open, onOpenChange, onSuccess }: AskAiDialo
         .then((data) => {
           const fetchedModels = data.models || [];
           setModels(fetchedModels);
-          
+
           if (fetchedModels.length > 0) {
             const savedModel = localStorage.getItem("gca:selectedAiModel");
-            const isValidModel = fetchedModels.some((m: AiModel) => m.name === savedModel);
-            
-            if (savedModel && isValidModel) {
+            const isValid = fetchedModels.some(
+              (m: AiModel) => m.name === savedModel
+            );
+
+            if (savedModel && isValid) {
               setSelectedModel(savedModel);
             } else {
-              // Try to find gemini-3.1-flash-lite-preview or flash-lite first
-              const flashLite = fetchedModels.find((m: AiModel) => m.name.includes("3.1-flash-lite-preview") || m.name.includes("flash-lite"));
-              if (flashLite) {
-                setSelectedModel(flashLite.name);
-              } else {
-                setSelectedModel(fetchedModels[0].name);
-              }
+              const preferred = fetchedModels.find(
+                (m: AiModel) =>
+                  m.name.includes("2.5-flash") || m.name.includes("2.0-flash")
+              );
+              setSelectedModel(
+                preferred ? preferred.name : fetchedModels[0].name
+              );
             }
           }
         })
-        .catch((err) => {
-          console.error("Failed to load models:", err);
-          // Fallback static model if fetch fails
-          setModels([{ name: "gemini-3.1-flash-lite-preview", displayName: "Gemini 3.1 Flash Lite" }]);
-          setSelectedModel("gemini-3.1-flash-lite-preview");
+        .catch(() => {
+          setModels([
+            { name: "gemini-2.5-flash", displayName: "Gemini 2.5 Flash" },
+          ]);
+          setSelectedModel("gemini-2.5-flash");
         })
-        .finally(() => {
-          setIsModelsLoading(false);
-        });
+        .finally(() => setIsModelsLoading(false));
     }
   }, [open, models.length]);
 
@@ -85,65 +128,144 @@ export function AskAiDialog({ event, open, onOpenChange, onSuccess }: AskAiDialo
     localStorage.setItem("gca:selectedAiModel", val);
   }
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!event || !language.trim() || !selectedModel) return;
+  function resetForm() {
+    setDialogState("idle");
+    setError(null);
+    setSummary("");
+    setDescription("");
+    setLocation("");
+    setSourceUrl("");
+    setPhotoUrl("");
+    setFeedback("");
+    setShowFeedback(false);
+  }
+
+  async function handleEnrich() {
+    if (!event || !selectedModel) return;
+
+    setDialogState("enriching");
+    setError(null);
 
     try {
-      setIsSubmitting(true);
-      setError(null);
-      
       const res = await fetch(`/api/events/${event.id}/ai`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           calendarId: event.calendarId,
-          targetLanguage: language.trim(),
           modelName: selectedModel,
+          feedback: feedback.trim() || null,
         }),
       });
 
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || "Failed to process AI request");
+        throw new Error(data.error || "AI enrichment failed");
+      }
+
+      const data = await res.json();
+      const enrichment: Enrichment = data.enrichment;
+
+      setSummary(enrichment.summary);
+      setDescription(enrichment.description);
+      setLocation(enrichment.location || "");
+      setSourceUrl(enrichment.sourceUrl);
+      setPhotoUrl(enrichment.photoUrl || "");
+      setFeedback("");
+      setShowFeedback(false);
+      setDialogState("review");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Something went wrong");
+      setDialogState(summary ? "review" : "idle");
+    }
+  }
+
+  async function handleSave() {
+    if (!event || !summary.trim()) return;
+
+    setDialogState("saving");
+    setError(null);
+
+    const fullDescription = buildFullDescription(
+      description,
+      sourceUrl,
+      photoUrl
+    );
+
+    try {
+      const res = await fetch(`/api/events/${event.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          calendarId: event.calendarId,
+          fields: {
+            summary: summary.trim(),
+            description: fullDescription,
+            location: location.trim() || null,
+          },
+          recurrenceMode: event.recurringEventId ? "all" : "single",
+          recurringEventId: event.recurringEventId ?? undefined,
+        }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "Failed to save changes");
       }
 
       onSuccess();
       onOpenChange(false);
-      setLanguage("");
-    } catch (err: any) {
-      setError(err.message || "Something went wrong.");
-    } finally {
-      setIsSubmitting(false);
+      resetForm();
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Something went wrong");
+      setDialogState("review");
     }
   }
 
+  const isEnriching = dialogState === "enriching";
+  const isSaving = dialogState === "saving";
+  const isReview = dialogState === "review";
+  const isBusy = isEnriching || isSaving;
+
   return (
-    <Dialog open={open} onOpenChange={(val) => {
-      onOpenChange(val);
-      if (!val) {
-        setLanguage("");
-        setError(null);
-      }
-    }}>
-      <DialogContent className="sm:max-w-md">
+    <Dialog
+      open={open}
+      onOpenChange={(val) => {
+        onOpenChange(val);
+        if (!val) resetForm();
+      }}
+    >
+      <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Translate / Rewrite Event</DialogTitle>
+          <DialogTitle className="flex items-center gap-2">
+            <Sparkles className="h-4 w-4 text-blue-500" />
+            Enrich with AI
+          </DialogTitle>
           <DialogDescription>
-            Use Gemini AI to translate this event&apos;s title, location, and description into another language.
+            Research this event and fill in missing details using AI with web
+            search.
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4 py-4">
-          <div className="space-y-2">
-            <label className="text-sm font-medium leading-none">AI Model</label>
+        <div className="space-y-4 py-2">
+          {/* AI Model selector */}
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium">AI Model</label>
             <Select
-              disabled={isModelsLoading || isSubmitting}
+              disabled={isModelsLoading || isBusy}
               value={selectedModel}
               onValueChange={handleModelChange}
             >
               <SelectTrigger className="w-full">
-                <SelectValue placeholder={isModelsLoading ? "Loading models..." : "Select a model"} />
+                <SelectValue
+                  placeholder={
+                    isModelsLoading ? "Loading models..." : "Select a model"
+                  }
+                >
+                  {(value: string) => {
+                    const model = models.find((m) => m.name === value);
+                    return model ? model.displayName : value;
+                  }}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 {models.map((model) => (
@@ -155,36 +277,157 @@ export function AskAiDialog({ event, open, onOpenChange, onSuccess }: AskAiDialo
             </Select>
           </div>
 
-          <div className="space-y-2">
-            <label htmlFor="language" className="text-sm font-medium leading-none">
-              Target Language
-            </label>
-            <Input
-              id="language"
-              placeholder="e.g. Ukrainian, English, Formal Polish..."
-              value={language}
-              onChange={(e) => setLanguage(e.target.value)}
-              disabled={isSubmitting}
-              autoFocus
-            />
-          </div>
+          {/* Enriched fields (shown after generation) */}
+          {isReview && (
+            <div className="space-y-3 rounded-lg border p-3">
+              <h4 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                AI-Enriched Fields
+              </h4>
 
-          {error && <p className="text-sm font-medium text-red-500">{error}</p>}
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium">Summary (title)</label>
+                <Input
+                  value={summary}
+                  onChange={(e) => setSummary(e.target.value)}
+                  disabled={isBusy}
+                />
+              </div>
 
-          <DialogFooter>
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium">Description</label>
+                <textarea
+                  className="w-full rounded-lg border border-input bg-transparent px-2.5 py-1.5 text-sm outline-none transition-colors placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-50 dark:bg-input/30"
+                  rows={3}
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  disabled={isBusy}
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium">Location</label>
+                <Input
+                  value={location}
+                  onChange={(e) => setLocation(e.target.value)}
+                  disabled={isBusy}
+                  placeholder="(optional)"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium">Source URL</label>
+                <Input
+                  value={sourceUrl}
+                  onChange={(e) => setSourceUrl(e.target.value)}
+                  disabled={isBusy}
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium">Photo URL</label>
+                <Input
+                  value={photoUrl}
+                  onChange={(e) => setPhotoUrl(e.target.value)}
+                  disabled={isBusy}
+                  placeholder="(optional)"
+                />
+              </div>
+
+              {/* Feedback section */}
+              <div>
+                <button
+                  type="button"
+                  onClick={() => setShowFeedback(!showFeedback)}
+                  className="flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground"
+                  disabled={isBusy}
+                >
+                  {showFeedback ? (
+                    <ChevronUp className="h-3 w-3" />
+                  ) : (
+                    <ChevronDown className="h-3 w-3" />
+                  )}
+                  Tell AI what to fix
+                </button>
+                {showFeedback && (
+                  <div className="mt-2 space-y-2">
+                    <textarea
+                      className="w-full rounded-lg border border-input bg-transparent px-2.5 py-1.5 text-sm outline-none transition-colors placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
+                      rows={2}
+                      value={feedback}
+                      onChange={(e) => setFeedback(e.target.value)}
+                      placeholder='e.g. "Description should be in Ukrainian" or "Wrong person, I mean the poet"'
+                      disabled={isBusy}
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleEnrich}
+                      disabled={isBusy || !feedback.trim()}
+                    >
+                      {isEnriching ? (
+                        <>
+                          <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                          Regenerating...
+                        </>
+                      ) : (
+                        "Regenerate"
+                      )}
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Error */}
+          {error && (
+            <p className="text-sm font-medium text-red-500">{error}</p>
+          )}
+        </div>
+
+        <DialogFooter>
+          <Button
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            disabled={isBusy}
+          >
+            Cancel
+          </Button>
+
+          {!isReview ? (
             <Button
-              type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-              disabled={isSubmitting}
+              onClick={handleEnrich}
+              disabled={isBusy || !selectedModel}
             >
-              Cancel
+              {isEnriching ? (
+                <>
+                  <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+                  Enriching...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="mr-1 h-4 w-4" />
+                  Enrich with AI
+                </>
+              )}
             </Button>
-            <Button type="submit" disabled={isSubmitting || !language.trim() || !selectedModel}>
-              {isSubmitting ? "Generating..." : "Ask AI"}
+          ) : (
+            <Button
+              onClick={handleSave}
+              disabled={isSaving || !summary.trim()}
+            >
+              {isSaving ? (
+                <>
+                  <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                "Save Changes"
+              )}
             </Button>
-          </DialogFooter>
-        </form>
+          )}
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
