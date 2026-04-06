@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ExternalLink, X } from "lucide-react";
@@ -65,17 +65,6 @@ export function EditPanel({
   const [pendingFields, setPendingFields] = useState<EventUpdateFields | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState(false);
-  const handleStartY = useRef(0);
-
-  const onHandleTouchStart = useCallback((e: React.TouchEvent) => {
-    handleStartY.current = e.touches[0].clientY;
-  }, []);
-
-  const onHandleTouchEnd = useCallback((e: React.TouchEvent) => {
-    const dy = e.changedTouches[0].clientY - handleStartY.current;
-    if (dy < -30) setExpanded(true);
-    if (dy > 30) setExpanded(false);
-  }, []);
 
   useEffect(() => {
     if (event && open) {
@@ -330,14 +319,16 @@ export function EditPanel({
       />
 
       {/* Panel container */}
-      <div className={`fixed inset-x-0 bottom-0 z-50 flex flex-col rounded-t-2xl border-t bg-background shadow-2xl transition-[max-height] duration-300 sm:static sm:inset-auto sm:z-auto sm:max-h-none sm:w-[400px] sm:shrink-0 sm:rounded-none sm:rounded-l-lg sm:border-l sm:border-t-0 sm:shadow-none ${expanded ? "max-h-[100vh]" : "max-h-[70vh]"}`}>
-        {/* Header */}
+      <div className={`fixed inset-x-0 bottom-0 z-50 flex flex-col rounded-t-2xl border-t bg-background shadow-2xl transition-all duration-300 ease-in-out sm:static sm:inset-auto sm:z-auto sm:max-h-none sm:w-[400px] sm:shrink-0 sm:rounded-none sm:rounded-l-lg sm:border-l sm:border-t-0 sm:shadow-none sm:transition-none ${expanded ? "top-0 rounded-t-none" : "top-[30vh]"}`}>
+        {/* Drag handle — tap to toggle full screen */}
         <div
-          className="flex items-center justify-between border-b px-4 py-3"
-          onTouchStart={onHandleTouchStart}
-          onTouchEnd={onHandleTouchEnd}
+          className="flex cursor-pointer items-center justify-center py-2 sm:hidden"
+          onClick={() => setExpanded((v) => !v)}
         >
-          <div className="absolute left-1/2 top-2 h-1 w-8 -translate-x-1/2 rounded-full bg-muted-foreground/30 sm:hidden" />
+          <div className="h-1 w-10 rounded-full bg-muted-foreground/40" />
+        </div>
+        {/* Header */}
+        <div className="flex items-center justify-between border-b px-4 pb-3 sm:py-3">
           <h2 className="text-base font-bold">Edit Event</h2>
           <Button variant="ghost" size="icon" onClick={onClose}>
             <X className="h-5 w-5" />
